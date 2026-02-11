@@ -37,4 +37,30 @@ public class InventoryController {
         inv.setExpiresAt(req.getExpiresAt());
         return inventoryService.saveWithAutoExpiry(inv);
     }
+
+    @PatchMapping("/inventory/{id}")
+    public Inventory update(@PathVariable long id, @RequestBody Inventory req){
+        Inventory inv = inventoryRepository.findById(id)
+                .orElseThrow(()-> new IllegalArgumentException("inventory not found"));
+
+        if(!inv.getUserId().equals(UserContext.userId())) throw  new IllegalArgumentException("forbidden");
+
+        if (req.getQuantity() != null) inv.setQuantity(req.getQuantity());
+        if (req.getUnit() != null) inv.setUnit(req.getUnit());
+        if (req.getStorage() != null) inv.setStorage(req.getStorage());
+        if (req.getPurchasedAt() != null) inv.setPurchasedAt(req.getPurchasedAt());
+        inv.setExpiresAt(req.getExpiresAt()); // null 허용(사용자 삭제)
+
+        return inventoryRepository.save(inv);
+    }
+
+    @DeleteMapping("/inventory/{id}")
+    public void delete(@PathVariable long id) {
+        Inventory inv = inventoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("inventory not found"));
+        if (!inv.getUserId().equals(UserContext.userId())) throw new IllegalArgumentException("forbidden");
+        inventoryRepository.delete(inv);
+    }
+
+
 }
