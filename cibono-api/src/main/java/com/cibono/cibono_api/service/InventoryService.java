@@ -19,7 +19,8 @@ public class InventoryService {
             "계란", 30,
             "마늘", 14,
             "양배추", 21,
-            "알배추", 14
+            "알배추", 14,
+            "우유", 14
     );
 
     public InventoryService(InventoryRepository inventoryRepository){
