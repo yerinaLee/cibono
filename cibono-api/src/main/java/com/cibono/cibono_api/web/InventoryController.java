@@ -3,6 +3,7 @@ package com.cibono.cibono_api.web;
 import com.cibono.cibono_api.common.UserContext;
 import com.cibono.cibono_api.domain.Inventory;
 import com.cibono.cibono_api.repository.InventoryRepository;
+import com.cibono.cibono_api.service.InventoryService;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -11,9 +12,12 @@ import java.util.List;
 @RestController
 public class InventoryController {
     private final InventoryRepository inventoryRepository;
+    private final InventoryService inventoryService;
 
-    public InventoryController(InventoryRepository inventoryRepository) {
+
+    public InventoryController(InventoryRepository inventoryRepository, InventoryService inventoryService) {
         this.inventoryRepository = inventoryRepository;
+        this.inventoryService = inventoryService;
     }
 
     @GetMapping("/inventory")
@@ -31,6 +35,6 @@ public class InventoryController {
         inv.setStorage(req.getStorage()); // FRIDGE/FREEZER/PANTRY
         inv.setPurchasedAt(req.getPurchasedAt());
         inv.setExpiresAt(req.getExpiresAt());
-        return inventoryRepository.save(inv);
+        return inventoryService.saveWithAutoExpiry(inv);
     }
 }
