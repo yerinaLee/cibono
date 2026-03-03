@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cibono – Alert Rules</title>
+  <link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 3C11 3 5 7.5 4 15.5c-.2 1.8.3 3.6 1.6 4.9 1.3 1.3 3.1 1.8 4.9 1.6C18.5 21 23 13 23 4c0-.6-.4-1-1-1Z"/><path d="M4.5 18.5c3-3 7.5-6 14.5-7"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.3 13.3 20.6a2 2 0 01-2.8 0L3 13.1V3h10.1l7.5 7.5a2 2 0 010 2.8Z"/><path d="M7.5 7.5h.01"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7"/><path d="M9.5 19a2.5 2.5 0 005 0"/></symbol>
+    <symbol id="i-fridge" viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2Z"/><path d="M7 11h12"/><path d="M9 6h.01"/><path d="M9 16h.01"/></symbol>
+    <symbol id="i-chef" viewBox="0 0 24 24"><path d="M7 7a5 5 0 0110 0c2 0 3 1.5 3 3s-1 3-3 3H7c-2 0-3-1.5-3-3s1-3 3-3Z"/><path d="M9 13v7a2 2 0 002 2h2a2 2 0 002-2v-7"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="7"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 16H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></symbol>
+  </svg>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logoMark"><svg class="svg" style="width:20px;height:20px;color:var(--brand-ink)"><use href="#i-leaf"/></svg></div>
+        <div><h1>Cibono</h1><p>식재료 · 특가 · 추천</p></div>
+      </div>
+      <nav class="nav">
+        <a href="index.html" data-nav="dashboard"><svg class="svg"><use href="#i-leaf"/></svg>Dashboard <span class="pill">Today</span></a>
+        <a href="deals.html" data-nav="deals"><svg class="svg"><use href="#i-tag"/></svg>Deals <span class="pill">8</span></a>
+        <a href="alerts.html" data-nav="alerts"><svg class="svg"><use href="#i-bell"/></svg>Alerts <span class="pill">3</span></a>
+        <a href="rules.html" data-nav="rules"><svg class="svg"><use href="#i-tag"/></svg>Alert Rules</a>
+        <a href="inventory.html" data-nav="inventory"><svg class="svg"><use href="#i-fridge"/></svg>Inventory <span class="pill">12</span></a>
+        <a href="recommend.html" data-nav="recommend"><svg class="svg"><use href="#i-chef"/></svg>Recommend</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="pageTitle">
+          <h2>Alert Rules</h2>
+          <div class="sub">기준가 대비 특가 감지 규칙 관리</div>
+        </div>
+        <div class="search">
+          <svg class="svg" style="color:var(--muted)"><use href="#i-search"/></svg>
+          <input placeholder="규칙 검색 (UI 예시)" />
+        </div>
+        <button class="btn btnPrimary" type="button">
+          <svg class="svg" style="color:#0f1f16"><use href="#i-plus"/></svg>새 규칙
+        </button>
+      </header>
+
+      <div class="container">
+        <section>
+          <div class="sectionHead">
+            <h3>규칙 리스트</h3>
+            <div class="meta">삭제/비활성 토글 UI 포함</div>
+          </div>
+
+          <div class="grid">
+            <article class="card col-6">
+              <div class="row">
+                <p class="title">현재 규칙</p>
+                <span class="badge badgeGreen">활성 4</span>
+              </div>
+              <p class="desc">자주 사는 품목만 등록해두면 특가가 뜰 때 바로 알려줘.</p>
+
+              <div class="spacer12"></div>
+
+              <div class="list">
+                <div class="item">
+                  <div class="ic"><svg class="svg"><use href="#i-tag"/></svg></div>
+                  <div class="content">
+                    <div class="topLine"><p class="name">우유 1L</p><span class="badge badgeGreen">≤ <span class="mono">2,900원</span></span></div>
+                    <p class="sub">조건: 기준가 이하 · 출처 제한: 전체 · 최근 알림: 오늘 10:12</p>
+                  </div>
+                  <div class="actions">
+                    <div class="toggle" data-on="true" title="활성/비활성 토글"></div>
+                    <button class="iconBtn" title="삭제"><svg class="svg"><use href="#i-trash"/></svg></button>
+                  </div>
+                </div>
+
+                <div class="item">
+                  <div class="ic"><svg class="svg"><use href="#i-tag"/></svg></div>
+                  <div class="content">
+                    <div class="topLine"><p class="name">계란 30구</p><span class="badge badgeGreen">≤ <span class="mono">7,900원</span></span></div>
+                    <p class="sub">조건: 기준가 이하 · 최근 알림: 오늘 09:05</p>
+                  </div>
+                  <div class="actions">
+                    <div class="toggle" data-on="true"></div>
+                    <button class="iconBtn"><svg class="svg"><use href="#i-trash"/></svg></button>
+                  </div>
+                </div>
+
+                <div class="item">
+                  <div class="ic"><svg class="svg"><use href="#i-tag"/></svg></div>
+                  <div class="content">
+                    <div class="topLine"><p class="name">대파 1단</p><span class="badge badgeGreen">≤ <span class="mono">1,800원</span></span></div>
+                    <p class="sub">조건: 기준가 이하 · 최근 알림: 오늘 11:02</p>
+                  </div>
+                  <div class="actions">
+                    <div class="toggle" data-on="true"></div>
+                    <button class="iconBtn"><svg class="svg"><use href="#i-trash"/></svg></button>
+                  </div>
+                </div>
+
+                <div class="item">
+                  <div class="ic"><svg class="svg"><use href="#i-tag"/></svg></div>
+                  <div class="content">
+                    <div class="topLine"><p class="name">닭가슴살 1kg</p><span class="badge">≤ <span class="mono">9,900원</span></span></div>
+                    <p class="sub">상태: 비활성(예시)</p>
+                  </div>
+                  <div class="actions">
+                    <div class="toggle" data-on="false"></div>
+                    <button class="iconBtn"><svg class="svg"><use href="#i-trash"/></svg></button>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="card col-6">
+              <div class="row">
+                <p class="title">규칙 추가 폼</p>
+                <span class="badge badgeBlue">폼 UI</span>
+              </div>
+              <p class="desc">품목명/기준가/조건(기본: 이하일 때)</p>
+
+              <div class="spacer12"></div>
+
+              <div class="formGrid" role="form">
+                <div class="field"><svg class="svg" style="color:var(--muted)"><use href="#i-tag"/></svg><input placeholder="품목명 (예: 두부 1모)" /></div>
+                <div class="field"><span class="badge badgeGreen">원</span><input placeholder="기준가 (예: 1400)" inputmode="numeric" /></div>
+                <div class="field" style="grid-column:1/-1">
+                  <svg class="svg" style="color:var(--muted)"><use href="#i-search"/></svg>
+                  <select>
+                    <option>조건: 기준가 이하일 때 (≤)</option>
+                    <option>조건: 기준가 대비 -10% 이하</option>
+                    <option>조건: 기준가 대비 -20% 이하</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="spacer12"></div>
+              <div class="btnRow">
+                <button class="btn btnPrimary" type="button"><svg class="svg" style="color:#0f1f16"><use href="#i-plus"/></svg>규칙 추가</button>
+                <button class="btn btnGhost" type="button">입력 초기화</button>
+              </div>
+
+              <div class="spacer12"></div>
+              <div class="empty">
+                <div class="bubble"><svg class="svg" style="color:var(--brand-ink)"><use href="#i-bell"/></svg></div>
+                <div><p class="title">팁</p><p class="text">규칙 10개만 등록해도 알림 정확도가 확 올라가.</p></div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+
+      <nav class="bottomNav">
+        <a href="index.html" data-nav="dashboard"><svg class="svg"><use href="#i-leaf"/></svg>홈</a>
+        <a href="deals.html" data-nav="deals"><svg class="svg"><use href="#i-tag"/></svg>특가</a>
+        <a href="alerts.html" data-nav="alerts"><svg class="svg"><use href="#i-bell"/></svg>알림</a>
+        <a href="inventory.html" data-nav="inventory"><svg class="svg"><use href="#i-fridge"/></svg>냉장고</a>
+        <a href="recommend.html" data-nav="recommend"><svg class="svg"><use href="#i-chef"/></svg>추천</a>
+      </nav>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

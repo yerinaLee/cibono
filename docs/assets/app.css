@@ -1,0 +1,1819 @@
+/* ============================================================
+   Cibono — iOS-Inspired Natural Design System v4
+   아이폰 내부 UI 감성: 맑은 물방울 글래스, 따뜻한 화이트, 자연 sage
+   Font: Plus Jakarta Sans + Noto Sans KR
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  /* ── Background ─ 따뜻한 크림 화이트 ─ */
+  --bg: #fdfcf9;
+  /* 아주 살짝 warm white */
+  --bg-2: #f8f6f1;
+  /* subtle warm tint */
+  --surface: rgba(255, 255, 255, .78);
+  /* 카드 */
+  --surface-high: rgba(255, 255, 255, .92);
+  /* 모달 위 */
+
+  /* ── Text ─ 따뜻한 다크 */
+  --text: #1c1f1d;
+  --text-2: #3a3f3c;
+  --muted: #7a8078;
+  --muted-2: rgba(90, 95, 92, .52);
+
+  /* ── Brand ─ Sage (채도↓, 더 자연) */
+  --sage: #90b890;
+  /* main sage */
+  --sage-deep: #6a9a72;
+  --sage-light: #c8dfc6;
+  --sage-pale: #eaf3e8;
+  /* 아주 연한 sage tint */
+  --sage-ink: #1d3323;
+  /* 짙은 숲 */
+
+  /* ── Semantic */
+  --warn: #d4945a;
+  /* 테라코타 (덜 노랗게) */
+  --warn-bg: rgba(212, 148, 90, .10);
+  --warn-border: rgba(212, 148, 90, .22);
+  --warn-ink: #4a2a0f;
+
+  --danger: #c96060;
+  --danger-bg: rgba(201, 96, 96, .10);
+  --danger-border: rgba(201, 96, 96, .22);
+  --danger-ink: #450f0f;
+
+  /* ── Chrome ─ 앱 바/사이드바 */
+  --chrome-bg: rgba(253, 252, 249, .90);
+  --chrome-line: rgba(28, 31, 29, .07);
+  --chrome-line-md: rgba(28, 31, 29, .12);
+  --chrome-ink: #161918;
+  --chrome-muted: rgba(22, 25, 24, .52);
+
+  /* ── iOS Glass 레이어 값 */
+  --glass-white-hi: rgba(255, 255, 255, .75);
+  --glass-white-mid: rgba(255, 255, 255, .50);
+  --glass-white-lo: rgba(252, 254, 252, .38);
+  --glass-border: rgba(255, 255, 255, .62);
+  --glass-shine: rgba(255, 255, 255, .90);
+  --glass-shadow-out: rgba(30, 40, 30, .07);
+  --glass-shadow-in: rgba(255, 255, 255, .88);
+
+  /* ── Shape */
+  --r-xl: 22px;
+  --r-lg: 16px;
+  --r-md: 12px;
+  --r-sm: 8px;
+  --r-pill: 999px;
+
+  /* ── Shadow */
+  --shadow-xs: 0 1px 6px rgba(30, 40, 30, .05);
+  --shadow-sm: 0 4px 16px rgba(30, 40, 30, .06);
+  --shadow-md: 0 10px 30px rgba(30, 40, 30, .08);
+  --shadow-lg: 0 20px 50px rgba(30, 40, 30, .10);
+
+  /* ── Layout */
+  --sidebar-w: 268px;
+  --max: 1080px;
+
+  /* ── Typography */
+  --font: 'Plus Jakarta Sans', 'Noto Sans KR', ui-sans-serif, system-ui,
+    -apple-system, 'Apple SD Gothic Neo', sans-serif;
+
+  /* ── Motion */
+  --ease: cubic-bezier(.22, .68, 0, 1.18);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --dur: 200ms;
+  --dur-fast: 130ms;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* 거의 흰색 + 아주 살짝 따뜻한 세이지 힌트 */
+  background:
+    radial-gradient(ellipse 800px 400px at 20% -10%,
+      rgba(144, 184, 144, .09) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 300px at 85% 5%,
+      rgba(200, 223, 198, .10) 0%, transparent 60%),
+    #fdfcf9;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+/* ── App Shell ──────────────────────────────────────────────── */
+.app {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════════════ */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 20px 14px;
+  overflow-y: auto;
+
+  /* 아이폰 사이드바 — 거의 투명한 frosted glass */
+  background: rgba(253, 252, 249, .88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, .55);
+
+  /* 오른쪽 얇은 라인 */
+  box-shadow: inset -1px 0 0 rgba(28, 31, 29, .06);
+}
+
+/* Brand */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 8px 18px;
+}
+
+.logoMark {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  /* 투명한 sage glass */
+  background: linear-gradient(145deg,
+      rgba(200, 223, 198, .72) 0%,
+      rgba(144, 184, 144, .38) 100%);
+  border: 1px solid rgba(255, 255, 255, .72);
+  display: grid;
+  place-items: center;
+  box-shadow:
+    0 4px 14px rgba(100, 154, 114, .12),
+    inset 0 1px 0 rgba(255, 255, 255, .80);
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  color: var(--chrome-ink);
+}
+
+.brand p {
+  margin: 1px 0 0;
+  font-size: 11px;
+  color: var(--chrome-muted);
+  font-weight: 500;
+}
+
+/* Nav */
+.nav {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(22, 25, 24, .65);
+  position: relative;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.nav a:hover {
+  background: rgba(144, 184, 144, .10);
+  border-color: rgba(144, 184, 144, .16);
+  color: rgba(22, 25, 24, .88);
+  transform: translateX(3px);
+}
+
+.nav a:active {
+  transform: translateX(1px);
+}
+
+.nav a>.svg {
+  width: 17px;
+  height: 17px;
+  color: rgba(22, 25, 24, .42);
+  transition: color var(--dur) var(--ease);
+}
+
+.nav a:hover>.svg {
+  color: var(--sage-deep);
+}
+
+/* Active */
+.nav a[aria-current="page"] {
+  background: rgba(144, 184, 144, .13);
+  border-color: rgba(144, 184, 144, .22);
+  color: var(--sage-ink);
+  font-weight: 700;
+}
+
+.nav a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  min-height: 14px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, var(--sage), var(--sage-deep));
+}
+
+.nav a[aria-current="page"]>.svg {
+  color: var(--sage-deep);
+}
+
+/* Nav pill */
+.nav .pill {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: rgba(22, 25, 24, .05);
+  color: var(--chrome-muted);
+  border: 1px solid rgba(22, 25, 24, .07);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN
+   ═══════════════════════════════════════════════════════════ */
+.main {
+  padding: 0 20px 96px;
+  min-width: 0;
+}
+
+/* Topbar */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  /* max-width 제거: 모든 페이지가 동일한 너비를 갖도록 */
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  /* iOS navigation bar 느낌 */
+  background: rgba(253, 252, 249, .82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(28, 31, 29, .06);
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: -1px;
+  height: 1.5px;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(144, 184, 144, .45),
+      transparent);
+  pointer-events: none;
+}
+
+/* Page Title */
+.pageTitle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pageTitle h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.6px;
+  color: var(--chrome-ink);
+}
+
+.pageTitle .sub {
+  font-size: 11.5px;
+  color: var(--chrome-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Search */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border-radius: var(--r-pill);
+  /* iOS 서치바처럼 완전 둥글게 */
+  background: rgba(238, 238, 234, .62);
+  /* iOS 연회색 배경 */
+  border: 1px solid rgba(255, 255, 255, .45);
+  min-width: 200px;
+  transition:
+    background var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.search:focus-within {
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 0 0 3px rgba(144, 184, 144, .18);
+}
+
+.search input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.search input::placeholder {
+  color: var(--muted-2);
+}
+
+/* Container */
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 10px 6px 28px;
+}
+
+section {
+  margin-top: 18px;
+}
+
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 18px 0 12px;
+}
+
+.sectionHead h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -.3px;
+  color: var(--text-2);
+}
+
+.sectionHead .meta {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CARDS — iOS 앱 카드 (맑은 물방울)
+   ═══════════════════════════════════════════════════════════ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: var(--r-xl);
+
+  /* 핵심: 투명도 높은 frosted glass */
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid rgba(255, 255, 255, .65);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, .85);
+  /* 상단 shine */
+
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.card:hover {
+  transform: translateY(-3px) scale(1.005);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, .92);
+  border-color: rgba(144, 184, 144, .28);
+}
+
+.card:active {
+  transform: translateY(-1px) scale(1.001);
+}
+
+.card .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.card .title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -.2px;
+  color: var(--text-2);
+}
+
+.card .desc {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  font-weight: 500;
+}
+
+/* Card orb (배경 orb — 더 연하게) */
+.cardAccent {
+  position: absolute;
+  inset: -60px -60px auto auto;
+  width: 220px;
+  height: 220px;
+  border-radius: var(--r-pill);
+  background: radial-gradient(circle at 35% 35%,
+      rgba(144, 184, 144, .18),
+      rgba(200, 223, 198, .06) 55%,
+      transparent);
+  pointer-events: none;
+}
+
+/* KPI */
+.kpi {
+  margin: 10px 0 0;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LIST ITEMS
+   ═══════════════════════════════════════════════════════════ */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px 14px;
+  border-radius: var(--r-lg);
+
+  background: rgba(255, 255, 255, .68);
+  border: 1px solid rgba(255, 255, 255, .60);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255, 255, 255, .80);
+
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    background var(--dur) var(--ease);
+}
+
+.item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, .90);
+  border-color: rgba(144, 184, 144, .24);
+  background: rgba(255, 255, 255, .82);
+}
+
+.item:active {
+  transform: translateY(0) scale(.998);
+}
+
+.item .ic {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .60);
+  background: rgba(144, 184, 144, .12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .80);
+  flex: 0 0 auto;
+}
+
+.item .content {
+  flex: 1;
+  min-width: 0;
+}
+
+.item .topLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.item .name {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -.25px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item .sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.item .actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+/* Button row */
+.btnRow {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   💧 BUTTONS — iPhone-grade Liquid Glass
+   
+   아이폰 느낌의 핵심:
+   - 상단 강한 shine (1.5px inset)
+   - 배경은 거의 투명 (0.42 이하)
+   - 외부 그림자는 연하고 넓게
+   - 호버 시 유리 두께가 두꺼워지는 느낌
+   ═══════════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -.1px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+
+  /* Liquid glass base */
+  background:
+    linear-gradient(170deg,
+      rgba(255, 255, 255, .72),
+      /* 상단 강한 반사 */
+      rgba(255, 255, 255, .46),
+      /* 중간 반투명 */
+      rgba(248, 252, 248, .34)
+      /* 하단 sage 힌트 */
+    );
+  border: 1px solid rgba(255, 255, 255, .65);
+  box-shadow:
+    0 6px 18px rgba(30, 40, 30, .07),
+    /* ambient */
+    0 1px 3px rgba(30, 40, 30, .05),
+    /* micro */
+    inset 0 1.5px 0 rgba(255, 255, 255, .88),
+    /* top shine */
+    inset 0 -1px 0 rgba(30, 40, 30, .04);
+  /* bottom depth */
+
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  background:
+    linear-gradient(170deg,
+      rgba(255, 255, 255, .85),
+      rgba(255, 255, 255, .60),
+      rgba(240, 250, 240, .45));
+  border-color: rgba(255, 255, 255, .78);
+  box-shadow:
+    0 10px 28px rgba(30, 40, 30, .09),
+    0 2px 5px rgba(30, 40, 30, .05),
+    inset 0 2px 0 rgba(255, 255, 255, .95),
+    inset 0 -1px 0 rgba(30, 40, 30, .03);
+}
+
+.btn:active {
+  transform: translateY(0) scale(.97);
+  box-shadow:
+    0 3px 8px rgba(30, 40, 30, .07),
+    inset 0 1px 0 rgba(255, 255, 255, .72),
+    inset 0 2px 5px rgba(30, 40, 30, .06);
+  background:
+    linear-gradient(170deg,
+      rgba(255, 255, 255, .62),
+      rgba(255, 255, 255, .40),
+      rgba(240, 248, 240, .30));
+}
+
+/* Primary — 절제된 Sage Glass
+   다른 컴포넌트들과 톤을 맞추기 위해:
+   - 채도/밝기 낮추고 투명도 높임
+   - 상단 흰 shine이 주인공, 색은 은은하게
+   - dark ink 텍스트 대신 forest-ink 로 부드럽게 */
+.btnPrimary {
+  background:
+    linear-gradient(170deg,
+      rgba(215, 240, 213, .82),
+      /* 상단: 밝고 투명한 mint */
+      rgba(168, 210, 166, .62),
+      /* 중간: 은은한 sage */
+      rgba(140, 185, 138, .50)
+      /* 하단: 절제된 deep sage */
+    );
+  color: #1e3524;
+  font-weight: 700;
+  border: 1px solid rgba(200, 232, 198, .55);
+  box-shadow:
+    0 6px 20px rgba(100, 155, 100, .10),
+    0 2px 5px rgba(100, 155, 100, .07),
+    inset 0 1.5px 0 rgba(245, 255, 244, .82),
+    inset 0 -1px 0 rgba(60, 100, 60, .06);
+}
+
+.btnPrimary:hover {
+  background:
+    linear-gradient(170deg,
+      rgba(225, 248, 222, .90),
+      rgba(178, 220, 175, .72),
+      rgba(150, 195, 148, .60));
+  border-color: rgba(210, 240, 210, .65);
+  box-shadow:
+    0 10px 28px rgba(100, 155, 100, .14),
+    0 3px 8px rgba(100, 155, 100, .08),
+    inset 0 2px 0 rgba(250, 255, 250, .90),
+    inset 0 -1px 0 rgba(60, 100, 60, .05);
+}
+
+.btnPrimary:active {
+  box-shadow:
+    0 3px 10px rgba(100, 155, 100, .10),
+    inset 0 1px 0 rgba(240, 255, 240, .70),
+    inset 0 2px 5px rgba(60, 100, 60, .07);
+}
+
+/* Ghost */
+.btnGhost {
+  background: rgba(255, 255, 255, .38);
+  border-color: rgba(28, 31, 29, .10);
+  box-shadow:
+    0 2px 8px rgba(30, 40, 30, .04),
+    inset 0 1px 0 rgba(255, 255, 255, .70);
+  backdrop-filter: blur(8px);
+}
+
+.btnGhost:hover {
+  background: rgba(255, 255, 255, .58);
+  border-color: rgba(144, 184, 144, .24);
+  box-shadow:
+    0 6px 18px rgba(30, 40, 30, .06),
+    inset 0 1.5px 0 rgba(255, 255, 255, .85);
+}
+
+/* Danger — 절제된 Terracotta Glass
+   Primary와 동일한 투명도 톤으로 맞춤 */
+.btnDanger {
+  background:
+    linear-gradient(170deg,
+      rgba(245, 210, 205, .78),
+      /* 상단: 밝은 rose */
+      rgba(220, 155, 148, .58),
+      /* 중간: muted terracotta */
+      rgba(200, 120, 115, .46)
+      /* 하단: deep */
+    );
+  color: #3d1010;
+  font-weight: 700;
+  border-color: rgba(235, 185, 180, .52);
+  box-shadow:
+    0 6px 18px rgba(180, 80, 70, .09),
+    inset 0 1.5px 0 rgba(255, 240, 238, .82);
+}
+
+.btnDanger:hover {
+  background:
+    linear-gradient(170deg,
+      rgba(250, 220, 215, .88),
+      rgba(230, 165, 158, .68),
+      rgba(210, 130, 125, .55));
+  box-shadow:
+    0 10px 26px rgba(180, 80, 70, .12),
+    inset 0 2px 0 rgba(255, 245, 243, .88);
+}
+
+/* Icon-only button */
+.iconBtn {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+
+  background:
+    linear-gradient(145deg,
+      rgba(255, 255, 255, .70),
+      rgba(248, 252, 248, .48));
+  border: 1px solid rgba(255, 255, 255, .62);
+  box-shadow:
+    0 3px 10px rgba(30, 40, 30, .06),
+    inset 0 1.5px 0 rgba(255, 255, 255, .86),
+    inset 0 -1px 0 rgba(30, 40, 30, .04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+
+.iconBtn:hover {
+  transform: translateY(-2px);
+  background:
+    linear-gradient(145deg,
+      rgba(255, 255, 255, .86),
+      rgba(240, 252, 240, .64));
+  box-shadow:
+    0 7px 18px rgba(30, 40, 30, .08),
+    inset 0 2px 0 rgba(255, 255, 255, .94),
+    inset 0 -1px 0 rgba(30, 40, 30, .03);
+}
+
+.iconBtn:active {
+  transform: scale(.93);
+  box-shadow:
+    0 2px 5px rgba(30, 40, 30, .06),
+    inset 0 1px 0 rgba(255, 255, 255, .68),
+    inset 0 2px 4px rgba(30, 40, 30, .06);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BADGES
+   ═══════════════════════════════════════════════════════════ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(28, 31, 29, .08);
+  background: rgba(28, 31, 29, .04);
+  color: var(--muted);
+}
+
+.badgeGreen {
+  background: rgba(144, 184, 144, .15);
+  border-color: rgba(106, 154, 114, .20);
+  color: var(--sage-ink);
+}
+
+.badgeWarn {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-ink);
+}
+
+.badgeRed {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-ink);
+}
+
+.badgeBlue {
+  background: rgba(90, 150, 230, .12);
+  border-color: rgba(90, 150, 230, .22);
+  color: #0b2a50;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FILTERS / FIELD
+   ═══════════════════════════════════════════════════════════ */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, .65);
+  border: 1px solid rgba(255, 255, 255, .58);
+  box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255, 255, 255, .78);
+  backdrop-filter: blur(10px);
+  transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.field:focus-within {
+  border-color: rgba(144, 184, 144, .30);
+  box-shadow: 0 0 0 3px rgba(144, 184, 144, .12), var(--shadow-xs);
+}
+
+.field input,
+.field select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field select {
+  padding-right: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABS — iOS Segmented Control 감성
+   ═══════════════════════════════════════════════════════════ */
+.tabs {
+  display: flex;
+  gap: 5px;
+  padding: 4px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(28, 31, 29, .08);
+  background: rgba(238, 238, 234, .50);
+  backdrop-filter: blur(10px);
+  width: fit-content;
+}
+
+.tab {
+  padding: 6px 13px;
+  border-radius: var(--r-sm);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, .50);
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--sage-ink);
+  background:
+    linear-gradient(160deg,
+      rgba(255, 255, 255, .85),
+      rgba(237, 250, 237, .68));
+  border-color: rgba(144, 184, 144, .20);
+  box-shadow:
+    0 3px 10px rgba(100, 154, 100, .10),
+    inset 0 1.5px 0 rgba(255, 255, 255, .90);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BANNER
+   ═══════════════════════════════════════════════════════════ */
+.banner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px 14px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(230, 170, 150, .22);
+  background: linear-gradient(135deg,
+      rgba(255, 245, 238, .78),
+      rgba(255, 235, 225, .58));
+  box-shadow:
+    0 4px 14px rgba(180, 100, 60, .06),
+    inset 0 1px 0 rgba(255, 255, 255, .72);
+  color: var(--warn-ink);
+  backdrop-filter: blur(8px);
+}
+
+.banner .ic {
+  flex: 0 0 auto;
+}
+
+.banner strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.banner .small {
+  font-size: 12px;
+  color: rgba(74, 42, 15, .65);
+  margin-top: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════ */
+.empty {
+  padding: 20px 18px;
+  border-radius: var(--r-lg);
+  border: 1.5px dashed rgba(28, 31, 29, .14);
+  background: rgba(255, 255, 255, .42);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  backdrop-filter: blur(6px);
+}
+
+.empty .bubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg,
+      rgba(200, 223, 198, .60), rgba(144, 184, 144, .24));
+  border: 1px solid rgba(255, 255, 255, .72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .80);
+}
+
+.empty .title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-2);
+}
+
+.empty .text {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SKELETON
+   ═══════════════════════════════════════════════════════════ */
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+}
+
+.sk {
+  border-radius: var(--r-xl);
+  border: 1px solid rgba(28, 31, 29, .05);
+  background: rgba(255, 255, 255, .50);
+  overflow: hidden;
+  position: relative;
+  height: 112px;
+}
+
+.sk::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, .70) 45%,
+      rgba(230, 245, 228, .40) 55%,
+      transparent 100%);
+  transform: translateX(-100%);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════════════════════════ */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 10, .32);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.modalOverlay[data-open="true"] {
+  display: flex;
+}
+
+.modal {
+  width: min(560px, 100%);
+  border-radius: var(--r-xl);
+  background: rgba(252, 253, 251, .92);
+  border: 1px solid rgba(255, 255, 255, .72);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, .88);
+  overflow: hidden;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.modalHeader {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(28, 31, 29, .06);
+  background: rgba(255, 255, 255, .45);
+}
+
+.modalHeader h4 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -.3px;
+}
+
+.modalBody {
+  padding: 16px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.formGrid .field {
+  width: 100%;
+}
+
+.formGrid .field input,
+.formGrid .field select {
+  width: 100%;
+}
+
+.modalFooter {
+  padding: 12px 16px 16px;
+  display: flex;
+  gap: 9px;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(28, 31, 29, .06);
+  background: rgba(255, 255, 255, .45);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SWITCH
+   ═══════════════════════════════════════════════════════════ */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(28, 31, 29, .08);
+  background: rgba(255, 255, 255, .55);
+}
+
+.toggle {
+  width: 44px;
+  height: 26px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(28, 31, 29, .10);
+  background: rgba(28, 31, 29, .10);
+  position: relative;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .96);
+  box-shadow:
+    0 2px 8px rgba(30, 40, 30, .16),
+    inset 0 1px 0 rgba(255, 255, 255, .98);
+  transition: transform var(--dur) var(--ease);
+}
+
+.toggle[data-on="true"] {
+  background: rgba(144, 184, 144, .48);
+  border-color: rgba(106, 154, 114, .28);
+}
+
+.toggle[data-on="true"]::after {
+  transform: translateX(18px);
+  box-shadow: 0 2px 8px rgba(60, 110, 60, .22), inset 0 1px 0 rgba(255, 255, 255, .98);
+}
+
+.switch label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOTTOM NAV (Mobile)
+   ═══════════════════════════════════════════════════════════ */
+.bottomNav {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: none;
+  gap: 4px;
+  padding: 7px;
+  border-radius: 20px;
+
+  /* iOS 탭바 느낌: 매우 투명한 frosted glass */
+  background: rgba(253, 252, 249, .80);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, .68);
+  box-shadow:
+    0 8px 28px rgba(30, 40, 30, .10),
+    inset 0 1px 0 rgba(255, 255, 255, .78);
+  z-index: 40;
+}
+
+.bottomNav a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px 4px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  color: rgba(22, 25, 24, .50);
+  font-size: 10.5px;
+  font-weight: 700;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.bottomNav a:hover {
+  color: rgba(22, 25, 24, .80);
+  transform: translateY(-2px);
+}
+
+.bottomNav a:active {
+  transform: scale(.95);
+}
+
+.bottomNav a[aria-current="page"] {
+  background:
+    linear-gradient(155deg,
+      rgba(255, 255, 255, .78),
+      rgba(228, 248, 226, .58));
+  border-color: rgba(144, 184, 144, .20);
+  color: var(--sage-ink);
+  box-shadow: 0 2px 8px rgba(100, 154, 100, .10), inset 0 1px 0 rgba(255, 255, 255, .82);
+}
+
+/* ── Grid columns ───────────────────────────────────────────── */
+.col-12 {
+  grid-column: span 12;
+}
+
+.col-8 {
+  grid-column: span 8;
+}
+
+.col-6 {
+  grid-column: span 6;
+}
+
+.col-4 {
+  grid-column: span 4;
+}
+
+/* ── SVG ────────────────────────────────────────────────────── */
+.svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Utilities ──────────────────────────────────────────────── */
+.right {
+  margin-left: auto;
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.small {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.spacer12 {
+  height: 12px;
+}
+
+.spacer20 {
+  height: 20px;
+}
+
+/* ── Topbar button tweaks ───────────────────────────────────── */
+.topbar .btnPrimary {
+  box-shadow:
+    0 4px 16px rgba(100, 160, 100, .14),
+    inset 0 2px 0 rgba(225, 250, 222, .80),
+    inset 0 -1px 0 rgba(60, 100, 60, .08);
+}
+
+.topbar .btnPrimary:hover {
+  box-shadow:
+    0 8px 24px rgba(100, 160, 100, .20),
+    inset 0 2.5px 0 rgba(235, 255, 232, .88),
+    inset 0 -1px 0 rgba(60, 100, 60, .06);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 980px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .bottomNav {
+    display: flex;
+  }
+
+  .main {
+    padding: 0 14px 100px;
+  }
+
+  .topbar {
+    padding: 10px 6px;
+  }
+
+  .search {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .col-8 {
+    grid-column: span 12;
+  }
+
+  .col-6 {
+    grid-column: span 12;
+  }
+
+  .col-4 {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 560px) {
+  .col-4 {
+    grid-column: span 12;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi {
+    font-size: 28px;
+  }
+
+  .item .actions {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  DETAIL POLISH — v4.1                                    ║
+   ║  미처리 디테일 전면 보강                                      ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+
+/* ── 1. SELECT 드롭다운 커스텀 화살표 ─────────────────────────
+   브라우저 기본 appearance 제거 후 직접 SVG 화살표 주입        */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  /* 오른쪽에 SVG 화살표 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%237a8078' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  background-size: 15px 15px;
+  padding-right: 22px !important;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+}
+
+/* .field 안의 select는 패딩 이미 적용됨 */
+.field select {
+  padding-right: 24px !important;
+}
+
+/* ── 2. INPUT — 포커스 링 & placeholder 색 ───────────────────
+   기본 outline 제거 + 시스템이 아닌 디자인 포커스 적용        */
+input {
+  outline: none;
+  -webkit-appearance: none;
+}
+
+input::placeholder {
+  color: rgba(90, 95, 92, .45);
+  font-weight: 500;
+}
+
+input:focus::placeholder {
+  color: rgba(90, 95, 92, .28);
+}
+
+/* .field 밖의 독립 input (검색창 등) */
+input[type="text"]:not(.field input),
+input[type="search"]:not(.field input),
+input:not(select):not(.field input) {
+  transition: box-shadow var(--dur) var(--ease);
+}
+
+/* ── 3. SCROLLBAR — webkit 커스텀 ────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(144, 184, 144, .32);
+  border-radius: var(--r-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(106, 154, 114, .48);
+}
+
+/* ── 4. CONTAINER 최대 너비 래퍼 ─────────────────────────────
+   topbar는 full-width이지만 container 내부 콘텐츠는 max-width */
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+}
+
+/* ── 5. 재고 만료 아이템 — 색상 강조 (인라인 스타일 보강) ─────
+   D-0(오늘), D-1, D-2 별로 아이템 왼쪽 border accent          */
+.item.urgentD0 {
+  border-color: rgba(201, 96, 96, .35) !important;
+  background: rgba(255, 248, 248, .82) !important;
+}
+
+.item.urgentD0 .ic {
+  background: rgba(201, 96, 96, .10);
+  border-color: rgba(201, 96, 96, .22);
+}
+
+.item.urgentD1 {
+  border-color: rgba(212, 148, 90, .32) !important;
+  background: rgba(255, 251, 246, .82) !important;
+}
+
+.item.urgentD1 .ic {
+  background: rgba(212, 148, 90, .10);
+  border-color: rgba(212, 148, 90, .22);
+}
+
+.item.urgentD2 {
+  border-color: rgba(212, 148, 90, .22) !important;
+  background: rgba(255, 253, 248, .80) !important;
+}
+
+/* ── 6. 가격 strong 태그 스타일 ──────────────────────────────
+   특가/기준가 텍스트의 bold 숫자를 더 선명하게               */
+.item .sub strong.mono,
+.item .sub .mono {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.item .sub strong.mono {
+  color: var(--sage-ink);
+  /* 특가가 = 숲 잉크 */
+}
+
+/* ── 7. 할인율 뱃지 — .saving ────────────────────────────────
+   deal 리스트에서 절약금액 강조용 (HTML에 클래스 추가 불필요,
+   strong 태그의 두번째 occurance에 색 적용)                  */
+.item .sub>strong:last-of-type {
+  color: var(--sage-deep);
+}
+
+/* ── 8. TOGGLE 단독 사용 시 cursor ───────────────────────────
+   switch 없이 .toggle만 쓸 때도 클릭 가능하게 보이도록        */
+.toggle {
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── 9. 카드 내부 LIST 구분선 ────────────────────────────────
+   card 안 list는 구분선을 통해 깔끔하게 분리                  */
+.card>.list .item {
+  border-radius: var(--r-md);
+  /* 카드 안에선 더 작은 radius */
+  box-shadow: none;
+  border-color: rgba(28, 31, 29, .07);
+  background: rgba(255, 255, 255, .55);
+}
+
+.card>.list .item:hover {
+  background: rgba(255, 255, 255, .80);
+  border-color: rgba(144, 184, 144, .18);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ── 10. SECTION DIVIDER ──────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(28, 31, 29, .08) 20%,
+      rgba(28, 31, 29, .08) 80%,
+      transparent);
+  margin: 16px 0;
+  border: none;
+}
+
+/* ── 11. PRICE CHIP — 절약 강조 ──────────────────────────────
+   deals 페이지에 절약금액을 mini-pill로 보이게                */
+.savingChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: rgba(144, 184, 144, .16);
+  border: 1px solid rgba(106, 154, 114, .20);
+  color: var(--sage-ink);
+  vertical-align: middle;
+}
+
+/* ── 12. FORM LABEL / FIELD 헤더 ─────────────────────────────
+   formGrid label 역할을 하는 span.badge를 더 눈에 띄게        */
+.formGrid .field .badge {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+/* ── 13. INPUT date / numeric — 커서 ─────────────────────────*/
+input[inputmode="numeric"],
+input[type="date"] {
+  cursor: text;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 14. MODAL — 입력 field 크기 통일 ───────────────────────── */
+.modalBody .field {
+  min-height: 42px;
+}
+
+.modalBody .field input,
+.modalBody .field select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 15. TOPBAR 모바일에서 좌우 패딩 통일 ────────────────────── */
+@media (max-width: 980px) {
+  .topbar {
+    padding: 10px 14px;
+  }
+}
+
+/* ── 16. CARD accent orb — cardAccent 없는 카드도 미세 배경 ── */
+.card:not(:has(.cardAccent))::after {
+  content: "";
+  position: absolute;
+  inset: -80px -80px auto auto;
+  width: 180px;
+  height: 180px;
+  border-radius: var(--r-pill);
+  background: radial-gradient(circle at 40% 40%,
+      rgba(144, 184, 144, .09),
+      transparent 65%);
+  pointer-events: none;
+}
+
+/* ── 17. EMPTY STATE — 링크 underline 방지 ────────────────────*/
+.empty a {
+  text-decoration: none;
+}
+
+/* ── 18. BADGE 안 strong / mono 처리 ─────────────────────────*/
+.badge .mono {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+/* ── 19. NAV active item 상대 좌표 기준 ─────────────────────── */
+.nav a {
+  position: relative;
+}
+
+/* ::before 기준점 보장 */
+
+/* ── 20. ITEM — 비활성(비활성 토글) 시 희미하게 ──────────────── */
+.item.inactive {
+  opacity: .55;
+  pointer-events: none;
+}
+
+.item.inactive .name {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+
+/* ── 21. ICON 토글 버튼 — trash iconBtn 위험 색상 ────────────── */
+.iconBtn.danger {
+  background: linear-gradient(145deg,
+      rgba(255, 220, 218, .65),
+      rgba(245, 195, 192, .48));
+  border-color: rgba(235, 185, 180, .48);
+}
+
+.iconBtn.danger:hover {
+  background: linear-gradient(145deg,
+      rgba(255, 225, 222, .80),
+      rgba(250, 200, 197, .62));
+  box-shadow:
+    0 6px 16px rgba(180, 70, 70, .10),
+    inset 0 1.5px 0 rgba(255, 240, 238, .88);
+}
+
+/* ── 22. TOPBAR ::after position 기준 보장 ───────────────────── */
+.topbar {
+  position: sticky;
+}
+
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  CUSTOM SELECT DROPDOWN — Glassmorphism                  ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+/* Wrapper — .field 안에 들어가는 컨테이너 */
+.customSelect {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Trigger — 선택된 값 + 화살표 */
+.cssTrigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+/* 화살표 SVG */
+.cssArrow {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  stroke: var(--muted);
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-left: auto;
+  transition: transform var(--dur) var(--ease);
+}
+
+.customSelect[aria-expanded="true"] .cssArrow {
+  transform: rotate(180deg);
+}
+
+/* 드롭다운 패널 */
+.cssPanel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -14px;
+  /* .field 패딩만큼 왼쪽 확장 */
+  min-width: calc(100% + 28px);
+  z-index: 200;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+
+  /* iOS sheet 느낌 */
+  background: rgba(252, 253, 251, .90);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, .70);
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 16px 40px rgba(20, 30, 20, .13),
+    0 4px 12px rgba(20, 30, 20, .07),
+    inset 0 1px 0 rgba(255, 255, 255, .85);
+
+  /* 열릴 때 fade+slide */
+  opacity: 0;
+  transform: translateY(-6px) scale(.97);
+  transform-origin: top left;
+  transition:
+    opacity 160ms var(--ease),
+    transform 160ms var(--ease);
+  pointer-events: none;
+}
+
+.cssPanel.open {
+  display: block;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* 위로 펼치기 */
+.cssPanel.dropup {
+  top: auto;
+  bottom: calc(100% + 8px);
+  transform-origin: bottom left;
+}
+
+/* 각 옵션 */
+.cssOption {
+  display: flex;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+  white-space: nowrap;
+}
+
+.cssOption:hover {
+  background: rgba(144, 184, 144, .12);
+  color: var(--sage-ink);
+}
+
+.cssOption.selected {
+  background: rgba(144, 184, 144, .16);
+  color: var(--sage-ink);
+  font-weight: 700;
+}
+
+.cssOption.selected::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sage-deep);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* 옵션 사이 구분선 */
+.cssOption+.cssOption {
+  border-top: 1px solid rgba(28, 31, 29, .05);
+}
+
+/* Dot indicator for selected option */
+.csDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sage-deep);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* Trigger label text */
+.csTriggerLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

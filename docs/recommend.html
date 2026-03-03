@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cibono – Recommend</title>
+  <link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 3C11 3 5 7.5 4 15.5c-.2 1.8.3 3.6 1.6 4.9 1.3 1.3 3.1 1.8 4.9 1.6C18.5 21 23 13 23 4c0-.6-.4-1-1-1Z"/><path d="M4.5 18.5c3-3 7.5-6 14.5-7"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7"/><path d="M9.5 19a2.5 2.5 0 005 0"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.3 13.3 20.6a2 2 0 01-2.8 0L3 13.1V3h10.1l7.5 7.5a2 2 0 010 2.8Z"/><path d="M7.5 7.5h.01"/></symbol>
+    <symbol id="i-fridge" viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2Z"/><path d="M7 11h12"/><path d="M9 6h.01"/><path d="M9 16h.01"/></symbol>
+    <symbol id="i-chef" viewBox="0 0 24 24"><path d="M7 7a5 5 0 0110 0c2 0 3 1.5 3 3s-1 3-3 3H7c-2 0-3-1.5-3-3s1-3 3-3Z"/><path d="M9 13v7a2 2 0 002 2h2a2 2 0 002-2v-7"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="7"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></symbol>
+  </svg>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logoMark"><svg class="svg" style="width:20px;height:20px;color:var(--brand-ink)"><use href="#i-leaf"/></svg></div>
+        <div><h1>Cibono</h1><p>식재료 · 특가 · 추천</p></div>
+      </div>
+      <nav class="nav">
+        <a href="index.html" data-nav="dashboard"><svg class="svg"><use href="#i-leaf"/></svg>Dashboard <span class="pill">Today</span></a>
+        <a href="deals.html" data-nav="deals"><svg class="svg"><use href="#i-tag"/></svg>Deals <span class="pill">8</span></a>
+        <a href="alerts.html" data-nav="alerts"><svg class="svg"><use href="#i-bell"/></svg>Alerts <span class="pill">3</span></a>
+        <a href="rules.html" data-nav="rules"><svg class="svg"><use href="#i-tag"/></svg>Alert Rules</a>
+        <a href="inventory.html" data-nav="inventory"><svg class="svg"><use href="#i-fridge"/></svg>Inventory <span class="pill">12</span></a>
+        <a href="recommend.html" data-nav="recommend"><svg class="svg"><use href="#i-chef"/></svg>Recommend</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="pageTitle">
+          <h2>Recommend</h2>
+          <div class="sub">임박 재료 우선 요리 추천</div>
+        </div>
+        <div class="search">
+          <svg class="svg" style="color:var(--muted)"><use href="#i-search"/></svg>
+          <input placeholder="요리 검색 (UI 예시)" />
+        </div>
+        <a class="btn btnPrimary" href="inventory.html">재고 보기</a>
+      </header>
+
+      <div class="container">
+        <section>
+          <div class="sectionHead">
+            <h3>오늘의 추천</h3>
+            <div class="meta">필터 UI 예시 포함</div>
+          </div>
+
+          <div class="filters">
+            <div class="field">
+              <svg class="svg" style="color:var(--muted)"><use href="#i-clock"/></svg>
+              <select><option>시간: 15분</option><option selected>시간: 30분</option><option>시간: 45분</option></select>
+            </div>
+            <div class="field">
+              <svg class="svg" style="color:var(--muted)"><use href="#i-search"/></svg>
+              <select><option>부족 재료: 최소</option><option>부족 재료: 1개 이하</option><option>부족 재료: 2개 이하</option></select>
+            </div>
+            <div class="switch">
+              <div class="toggle" data-on="true" title="매운맛 제외 토글(UI)"></div>
+              <label>매운맛 제외</label>
+            </div>
+          </div>
+
+          <div class="spacer12"></div>
+
+          <div class="grid">
+            <article class="card col-6">
+              <div class="row"><p class="title">두부부침 + 대파 간장소스</p><span class="badge badgeRed">임박 포함</span></div>
+              <p class="desc">사용 재료: 두부, 대파, 간장, 식용유<br/>부족 재료: 0개</p>
+              <div class="spacer12"></div>
+              <div class="btnRow"><span class="badge badgeGreen">15~20분</span><span class="badge">부족 0</span><button class="btn" type="button">레시피 보기(예시)</button></div>
+            </article>
+
+            <article class="card col-6">
+              <div class="row"><p class="title">계란말이 (대파 듬뿍)</p><span class="badge badgeWarn">임박 D-2</span></div>
+              <p class="desc">사용 재료: 계란, 대파, 소금<br/>부족 재료: 1개(케첩/마요 선택)</p>
+              <div class="spacer12"></div>
+              <div class="btnRow"><span class="badge badgeGreen">20~30분</span><span class="badge">부족 1</span><button class="btn" type="button">레시피 보기(예시)</button></div>
+            </article>
+
+            <article class="card col-6">
+              <div class="row"><p class="title">우유 크림파스타(간단)</p><span class="badge badgeWarn">임박 D-1</span></div>
+              <p class="desc">사용 재료: 우유, 마늘(선택), 파스타면<br/>부족 재료: 2개(파스타면, 치즈)</p>
+              <div class="spacer12"></div>
+              <div class="btnRow"><span class="badge badgeGreen">30분</span><span class="badge">부족 2</span><button class="btn" type="button">장보기 리스트(예시)</button></div>
+            </article>
+
+            <article class="card col-6">
+              <div class="row"><p class="title">닭가슴살 샐러드</p><span class="badge badgeGreen">가벼움</span></div>
+              <p class="desc">사용 재료: 닭가슴살, 채소(있다면), 드레싱<br/>부족 재료: 1개(채소 믹스)</p>
+              <div class="spacer12"></div>
+              <div class="btnRow"><span class="badge badgeGreen">15분</span><span class="badge">부족 1</span><button class="btn" type="button">레시피 보기(예시)</button></div>
+            </article>
+          </div>
+
+          <div class="spacer12"></div>
+          <div class="empty">
+            <div class="bubble"><svg class="svg" style="color:var(--brand-ink)"><use href="#i-chef"/></svg></div>
+            <div><p class="title">추천이 비어있을 때</p><p class="text">재고를 먼저 등록하거나 필터를 완화하면 추천이 생겨.</p></div>
+            <span class="right"></span>
+            <a class="btn btnGhost" href="inventory.html">재고 등록</a>
+          </div>
+        </section>
+      </div>
+
+      <nav class="bottomNav">
+        <a href="index.html" data-nav="dashboard"><svg class="svg"><use href="#i-leaf"/></svg>홈</a>
+        <a href="deals.html" data-nav="deals"><svg class="svg"><use href="#i-tag"/></svg>특가</a>
+        <a href="alerts.html" data-nav="alerts"><svg class="svg"><use href="#i-bell"/></svg>알림</a>
+        <a href="inventory.html" data-nav="inventory"><svg class="svg"><use href="#i-fridge"/></svg>냉장고</a>
+        <a href="recommend.html" data-nav="recommend"><svg class="svg"><use href="#i-chef"/></svg>추천</a>
+      </nav>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

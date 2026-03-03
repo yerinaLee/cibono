@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cibono – Dashboard</title>
+  <link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+  <!-- SVG sprite -->
+  <svg width="0" height="0" style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 3C11 3 5 7.5 4 15.5c-.2 1.8.3 3.6 1.6 4.9 1.3 1.3 3.1 1.8 4.9 1.6C18.5 21 23 13 23 4c0-.6-.4-1-1-1Z"/><path d="M4.5 18.5c3-3 7.5-6 14.5-7"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7"/><path d="M9.5 19a2.5 2.5 0 005 0"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.3 13.3 20.6a2 2 0 01-2.8 0L3 13.1V3h10.1l7.5 7.5a2 2 0 010 2.8Z"/><path d="M7.5 7.5h.01"/></symbol>
+    <symbol id="i-fridge" viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2Z"/><path d="M7 11h12"/><path d="M9 6h.01"/><path d="M9 16h.01"/></symbol>
+    <symbol id="i-chef" viewBox="0 0 24 24"><path d="M7 7a5 5 0 0110 0c2 0 3 1.5 3 3s-1 3-3 3H7c-2 0-3-1.5-3-3s1-3 3-3Z"/><path d="M9 13v7a2 2 0 002 2h2a2 2 0 002-2v-7"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="7"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 2l10 18H2L12 2Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></symbol>
+  </svg>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logoMark"><svg class="svg" style="width:20px;height:20px;color:var(--brand-ink)"><use href="#i-leaf"/></svg></div>
+        <div><h1>Cibono</h1><p>식재료 · 특가 · 추천</p></div>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <a href="index.html" data-nav="dashboard"><svg class="svg"><use href="#i-leaf"/></svg>Dashboard <span class="pill">Today</span></a>
+        <a href="deals.html" data-nav="deals"><svg class="svg"><use href="#i-tag"/></svg>Deals <span class="pill">8</span></a>
+        <a href="alerts.html" data-nav="alerts"><svg class="svg"><use href="#i-bell"/></svg>Alerts <span class="pill">3</span></a>
+        <a href="rules.html" data-nav="rules"><svg class="svg"><use href="#i-tag"/></svg>Alert Rules</a>
+        <a href="inventory.html" data-nav="inventory"><svg class="svg"><use href="#i-fridge"/></svg>Inventory <span class="pill">12</span></a>
+        <a href="recommend.html" data-nav="recommend"><svg class="svg"><use href="#i-chef"/></svg>Recommend</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="pageTitle">
+          <h2>Dashboard</h2>
+          <div class="sub">오늘의 재고/특가/추천 요약</div>
+        </div>
+
+        <div class="search" role="search">
+          <svg class="svg" style="color:var(--muted)"><use href="#i-search"/></svg>
+          <input placeholder="품목/요리 검색 (UI 예시)" />
+        </div>
+
+        <button class="btn btnPrimary" type="button" data-open="modalAddInventory">
+          <svg class="svg" style="color:#0f1f16"><use href="#i-plus"/></svg>
+          빠른 추가
+        </button>
+      </header>
+
+      <div class="container">
+        <div class="banner" role="status" aria-live="polite">
+          <div class="ic" style="width:34px;height:34px;background:rgba(232,107,107,.10);border-color:rgba(232,107,107,.20)">
+            <svg class="svg" style="color:#5a1a1d"><use href="#i-warn"/></svg>
+          </div>
+          <div>
+            <strong>네트워크 오류 배너 자리 (예시)</strong>
+            <div class="small">특가 데이터 로딩 실패 시, 여기에 재시도 버튼/가이드가 들어가.</div>
+          </div>
+          <span class="right"></span>
+          <button class="btn btnGhost" type="button">재시도</button>
+        </div>
+
+        <section>
+          <div class="sectionHead">
+            <h3>오늘의 요약</h3>
+            <div class="meta">2026-03-03 (화) · 서울</div>
+          </div>
+
+          <div class="grid">
+            <article class="card col-4">
+              <div class="cardAccent"></div>
+              <div class="row">
+                <p class="title">임박 재료</p>
+                <span class="badge badgeWarn"><svg class="svg" style="width:14px;height:14px"><use href="#i-warn"/></svg> D-2 이내</span>
+              </div>
+              <div class="kpi mono">3</div>
+              <p class="desc">두부(D-0), 우유(D-1), 대파(D-2)</p>
+              <div class="spacer12"></div>
+              <div class="btnRow">
+                <a class="btn" href="inventory.html"><svg class="svg"><use href="#i-fridge"/></svg>냉장고 보기</a>
+              </div>
+            </article>
+
+            <article class="card col-4">
+              <div class="cardAccent"></div>
+              <div class="row">
+                <p class="title">새 알림</p>
+                <span class="badge badgeRed"><svg class="svg" style="width:14px;height:14px"><use href="#i-bell"/></svg> 미확인</span>
+              </div>
+              <div class="kpi mono">3</div>
+              <p class="desc">계란/우유/대파 특가 알림이 도착</p>
+              <div class="spacer12"></div>
+              <div class="btnRow">
+                <a class="btn" href="alerts.html"><svg class="svg"><use href="#i-bell"/></svg>알림 확인</a>
+              </div>
+            </article>
+
+            <article class="card col-4">
+              <div class="cardAccent"></div>
+              <div class="row">
+                <p class="title">추천 요리</p>
+                <span class="badge badgeGreen"><svg class="svg" style="width:14px;height:14px"><use href="#i-chef"/></svg> Today</span>
+              </div>
+              <div class="kpi mono">4</div>
+              <p class="desc">임박 재료 기반 우선 추천 (15~30분)</p>
+              <div class="spacer12"></div>
+              <div class="btnRow">
+                <a class="btn" href="recommend.html"><svg class="svg"><use href="#i-chef"/></svg>추천 보기</a>
+              </div>
+            </article>
+          </div>
+
+          <div class="sectionHead" style="margin-top:18px">
+            <h3>빠른 액션</h3>
+            <div class="meta">자주 쓰는 작업</div>
+          </div>
+
+          <div class="btnRow">
+            <button class="btn btnPrimary" type="button" data-open="modalAddInventory">
+              <svg class="svg" style="color:#0f1f16"><use href="#i-plus"/></svg>재료 추가
+            </button>
+            <a class="btn" href="deals.html"><svg class="svg"><use href="#i-tag"/></svg>특가 보기</a>
+            <a class="btn" href="rules.html"><svg class="svg"><use href="#i-plus"/></svg>알림 규칙 추가</a>
+          </div>
+
+          <div class="sectionHead" style="margin-top:20px">
+            <h3>로딩 스켈레톤 (정적 UI 예시)</h3>
+            <div class="meta">데이터 불러오는 중</div>
+          </div>
+          <div class="skeletonGrid">
+            <div class="sk col-4" aria-hidden="true"></div>
+            <div class="sk col-4" aria-hidden="true"></div>
+            <div class="sk col-4" aria-hidden="true"></div>
+          </div>
+
+          <div class="spacer12"></div>
+          <p class="small">※ 이 페이지는 정적 UI 시안이라 저장/조회 로직은 없고, RN/Expo로 옮기기 쉬운 컴포넌트 구조를 의도했어.</p>
+        </section>
+      </div>
+
+      <nav class="bottomNav" aria-label="Bottom navigation">
+        <a href="index.html" data-nav="dashboard"><svg class="svg"><use href="#i-leaf"/></svg>홈</a>
+        <a href="deals.html" data-nav="deals"><svg class="svg"><use href="#i-tag"/></svg>특가</a>
+        <a href="alerts.html" data-nav="alerts"><svg class="svg"><use href="#i-bell"/></svg>알림</a>
+        <a href="inventory.html" data-nav="inventory"><svg class="svg"><use href="#i-fridge"/></svg>냉장고</a>
+        <a href="recommend.html" data-nav="recommend"><svg class="svg"><use href="#i-chef"/></svg>추천</a>
+      </nav>
+
+      <!-- Modal: Add Inventory (shared UI; dashboard에도 둠) -->
+      <div class="modalOverlay" id="modalAddInventory" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="재료 추가">
+          <div class="modalHeader">
+            <h4>재료 추가</h4>
+            <button class="iconBtn" type="button" data-close="modalAddInventory" aria-label="닫기">
+              <svg class="svg"><use href="#i-x"/></svg>
+            </button>
+          </div>
+          <div class="modalBody">
+            <div class="formGrid">
+              <div class="field"><svg class="svg" style="color:var(--muted)"><use href="#i-fridge"/></svg><input placeholder="품목명 (예: 우유 1L)" /></div>
+              <div class="field"><span class="badge badgeGreen">수량</span><input placeholder="예: 1" inputmode="numeric" /></div>
+              <div class="field"><span class="badge">보관</span><select><option>냉장</option><option>냉동</option><option>실온</option></select></div>
+              <div class="field"><span class="badge badgeWarn">유통기한</span><input placeholder="YYYY-MM-DD" /></div>
+            </div>
+          </div>
+          <div class="modalFooter">
+            <button class="btn btnGhost" type="button" data-close="modalAddInventory">취소</button>
+            <button class="btn btnPrimary" type="button" data-close="modalAddInventory">추가(정적)</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

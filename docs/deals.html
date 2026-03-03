@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cibono – Deals</title>
+  <link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 3C11 3 5 7.5 4 15.5c-.2 1.8.3 3.6 1.6 4.9 1.3 1.3 3.1 1.8 4.9 1.6C18.5 21 23 13 23 4c0-.6-.4-1-1-1Z"/><path d="M4.5 18.5c3-3 7.5-6 14.5-7"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7"/><path d="M9.5 19a2.5 2.5 0 005 0"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.3 13.3 20.6a2 2 0 01-2.8 0L3 13.1V3h10.1l7.5 7.5a2 2 0 010 2.8Z"/><path d="M7.5 7.5h.01"/></symbol>
+    <symbol id="i-fridge" viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2Z"/><path d="M7 11h12"/><path d="M9 6h.01"/><path d="M9 16h.01"/></symbol>
+    <symbol id="i-chef" viewBox="0 0 24 24"><path d="M7 7a5 5 0 0110 0c2 0 3 1.5 3 3s-1 3-3 3H7c-2 0-3-1.5-3-3s1-3 3-3Z"/><path d="M9 13v7a2 2 0 002 2h2a2 2 0 002-2v-7"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="7"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="M4 7l2-3h12l2 3"/><path d="M4 7h16v3a2 2 0 01-2 2H6a2 2 0 01-2-2V7Z"/><path d="M6 12v8h12v-8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></symbol>
+  </svg>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logoMark"><svg class="svg" style="width:20px;height:20px;color:var(--brand-ink)"><use href="#i-leaf"/></svg></div>
+        <div><h1>Cibono</h1><p>식재료 · 특가 · 추천</p></div>
+      </div>
+      <nav class="nav">
+        <a href="index.html" data-nav="dashboard"><svg class="svg"><use href="#i-leaf"/></svg>Dashboard <span class="pill">Today</span></a>
+        <a href="deals.html" data-nav="deals"><svg class="svg"><use href="#i-tag"/></svg>Deals <span class="pill">8</span></a>
+        <a href="alerts.html" data-nav="alerts"><svg class="svg"><use href="#i-bell"/></svg>Alerts <span class="pill">3</span></a>
+        <a href="rules.html" data-nav="rules"><svg class="svg"><use href="#i-tag"/></svg>Alert Rules</a>
+        <a href="inventory.html" data-nav="inventory"><svg class="svg"><use href="#i-fridge"/></svg>Inventory <span class="pill">12</span></a>
+        <a href="recommend.html" data-nav="recommend"><svg class="svg"><use href="#i-chef"/></svg>Recommend</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="pageTitle">
+          <h2>Deals</h2>
+          <div class="sub">오늘 유효한 특가 모아보기</div>
+        </div>
+        <div class="search">
+          <svg class="svg" style="color:var(--muted)"><use href="#i-search"/></svg>
+          <input placeholder="품목/매장 검색 (UI 예시)" />
+        </div>
+        <a class="btn btnPrimary" href="rules.html"><svg class="svg" style="color:#0f1f16"><use href="#i-plus"/></svg>규칙 추가</a>
+      </header>
+
+      <div class="container">
+        <section>
+          <div class="sectionHead">
+            <h3>오늘 유효한 특가</h3>
+            <div class="meta">필터: 검색/매장/기간</div>
+          </div>
+
+          <div class="filters">
+            <div class="field">
+              <svg class="svg" style="color:var(--muted)"><use href="#i-search"/></svg>
+              <input placeholder="검색: 예) 우유, 계란, 대파" />
+            </div>
+            <div class="field">
+              <svg class="svg" style="color:var(--muted)"><use href="#i-store"/></svg>
+              <select>
+                <option>매장: 전체</option><option>이마트</option><option>홈플러스</option><option>쿠팡</option><option>마켓컬리</option>
+              </select>
+            </div>
+            <div class="field">
+              <svg class="svg" style="color:var(--muted)"><use href="#i-clock"/></svg>
+              <select><option>기간: 오늘</option><option>이번주</option></select>
+            </div>
+            <span class="badge badgeGreen">총 8건</span>
+          </div>
+
+          <div class="spacer12"></div>
+
+          <div class="list">
+            <div class="item">
+              <div class="ic"><svg class="svg"><use href="#i-tag"/></svg></div>
+              <div class="content">
+                <div class="topLine"><p class="name">우유 1L (서울우유)</p><span class="badge badgeGreen">특가</span></div>
+                <p class="sub"><strong class="mono">2,480원</strong> · 03/03 00:00~23:59 · 출처: 쿠팡 · 기준가 2,900원 대비 <strong class="mono">420원 절약</strong></p>
+              </div>
+              <div class="actions">
+                <button class="iconBtn" type="button" title="규칙 추가 UI"><svg class="svg"><use href="#i-plus"/></svg></button>
+              </div>
+            </div>
+
+            <div class="item">
+              <div class="ic"><svg class="svg"><use href="#i-tag"/></svg></div>
+              <div class="content">
+                <div class="topLine"><p class="name">계란 30구</p><span class="badge badgeGreen">특가</span></div>
+                <p class="sub"><strong class="mono">6,990원</strong> · 03/03~03/05 · 출처: 이마트 · 기준가 7,900원 대비 <strong class="mono">910원 절약</strong></p>
+              </div>
+              <div class="actions"><button class="iconBtn" type="button"><svg class="svg"><use href="#i-plus"/></svg></button></div>
+            </div>
+
+            <div class="item">
+              <div class="ic"><svg class="svg"><use href="#i-tag"/></svg></div>
+              <div class="content">
+                <div class="topLine"><p class="name">대파 1단</p><span class="badge badgeGreen">특가</span></div>
+                <p class="sub"><strong class="mono">1,290원</strong> · 03/03 · 출처: 홈플러스 · 기준가 1,800원 대비 <strong class="mono">510원 절약</strong></p>
+              </div>
+              <div class="actions"><button class="iconBtn" type="button"><svg class="svg"><use href="#i-plus"/></svg></button></div>
+            </div>
+
+            <div class="item">
+              <div class="ic"><svg class="svg"><use href="#i-tag"/></svg></div>
+              <div class="content">
+                <div class="topLine"><p class="name">두부 1모</p><span class="badge badgeGreen">특가</span></div>
+                <p class="sub"><strong class="mono">990원</strong> · 03/03~03/04 · 출처: 마켓컬리 · 기준가 1,400원 대비 <strong class="mono">410원 절약</strong></p>
+              </div>
+              <div class="actions"><button class="iconBtn" type="button"><svg class="svg"><use href="#i-plus"/></svg></button></div>
+            </div>
+          </div>
+
+          <div class="spacer12"></div>
+
+          <div class="empty">
+            <div class="bubble"><svg class="svg" style="color:var(--brand-ink)"><use href="#i-store"/></svg></div>
+            <div>
+              <p class="title">조건에 맞는 특가가 없을 때</p>
+              <p class="text">기간을 “이번주”로 바꾸거나 기준가를 조정해봐.</p>
+            </div>
+            <span class="right"></span>
+            <button class="btn btnGhost" type="button">필터 초기화</button>
+          </div>
+        </section>
+      </div>
+
+      <nav class="bottomNav">
+        <a href="index.html" data-nav="dashboard"><svg class="svg"><use href="#i-leaf"/></svg>홈</a>
+        <a href="deals.html" data-nav="deals"><svg class="svg"><use href="#i-tag"/></svg>특가</a>
+        <a href="alerts.html" data-nav="alerts"><svg class="svg"><use href="#i-bell"/></svg>알림</a>
+        <a href="inventory.html" data-nav="inventory"><svg class="svg"><use href="#i-fridge"/></svg>냉장고</a>
+        <a href="recommend.html" data-nav="recommend"><svg class="svg"><use href="#i-chef"/></svg>추천</a>
+      </nav>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
