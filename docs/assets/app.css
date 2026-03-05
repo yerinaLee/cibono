@@ -1324,6 +1324,70 @@ section {
     inset 0 -1px 0 rgba(60, 100, 60, .06);
 }
 
+/* ── Bottom Sheet ── */
+.ruleFormSheet .bottomSheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 92dvh;
+  z-index: 601;
+  display: flex;
+  flex-direction: column;
+  background: rgba(253, 252, 249, .97);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, .65);
+  box-shadow: 0 -12px 48px rgba(20, 30, 20, .14), inset 0 1px 0 rgba(255, 255, 255, .80);
+  transform: translateY(100%);
+  transition: transform 280ms cubic-bezier(.32, 0, .67, 0);
+  overscroll-behavior: contain;
+}
+
+.ruleFormSheet[data-open="true"] .bottomSheet {
+  transform: translateY(0);
+  transition-timing-function: cubic-bezier(.22, .68, 0, 1.16);
+}
+
+.sheetHandle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, .15);
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(28, 31, 29, .06);
+}
+
+.sheetBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  overscroll-behavior: contain;
+}
+
+.sheetFooter {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(28, 31, 29, .06);
+  flex-shrink: 0;
+}
+
+.sheetFooter .btn {
+  flex: 1;
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 980px) {
   .app {
@@ -1377,11 +1441,195 @@ section {
     font-size: 28px;
   }
 
+  /* 560px 이하에서는 actions 세로 쌓임 해제 — 가로 유지 */
   .item .actions {
-    flex-direction: column;
-    gap: 5px;
+    flex-direction: row;
+    gap: 8px;
+    flex-shrink: 0;
   }
 }
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  GALAXY S24 — 480px 이하 모바일 집중 최적화              ║
+   ║  주요 수정: topbar 2행, 텍스트 크기, 컴포넌트 간격 축소  ║
+   ╚══════════════════════════════════════════════════════════╝ */
+@media (max-width: 480px) {
+
+  /* ── topbar: 2행 레이아웃
+     1행: 타이틀 | 버튼
+     2행: 검색창 (전체 너비)                              */
+  .topbar {
+    flex-wrap: wrap;
+    padding: 10px 16px 8px;
+    gap: 8px;
+  }
+
+  .topbar .pageTitle {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topbar .pageTitle h2 {
+    font-size: 18px;
+    letter-spacing: -.4px;
+  }
+
+  .topbar .pageTitle .sub {
+    display: none;
+    /* 작은 화면에선 부제 숨김 */
+  }
+
+  /* 검색창 — 두 번째 줄 전체 너비 */
+  .topbar .search {
+    order: 3;
+    width: 100%;
+    flex: none;
+  }
+
+  /* 버튼은 첫 줄 오른쪽 */
+  .topbar .btn {
+    order: 2;
+    flex-shrink: 0;
+    font-size: 12px;
+    padding: 7px 13px;
+    gap: 5px;
+  }
+
+  .topbar .btn .svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* ── 컨테이너 좌우 패딩 */
+  .main {
+    padding: 0 12px 96px;
+  }
+
+  /* ── 카드 */
+  .card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  /* ── 아이템 행 */
+  .item {
+    padding: 11px 12px;
+  }
+
+  .item .name {
+    font-size: 13px;
+  }
+
+  .item .sub {
+    font-size: 11px;
+  }
+
+  /* ── 액션 버튼 — 작은 화면에서도 가로 유지 */
+  .item .actions {
+    flex-direction: row;
+    gap: 6px;
+    align-items: center;
+  }
+
+  /* ── badge */
+  .badge {
+    font-size: 10px;
+    padding: 2px 7px;
+  }
+
+  /* ── 섹션 헤드 */
+  .sectionHead {
+    margin-bottom: 10px;
+  }
+
+  .sectionHead h3 {
+    font-size: 14px;
+  }
+
+  /* ── 탭 */
+  .tabs {
+    gap: 4px;
+  }
+
+  .tab {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  /* ── bottomNav */
+  .bottomNav {
+    padding: 0 4px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    height: auto;
+  }
+
+  .bottomNav a {
+    font-size: 10px;
+    padding: 8px 2px 4px;
+  }
+
+  .bottomNav svg {
+    width: 20px;
+    height: 20px;
+    margin-bottom: 2px;
+  }
+
+  /* ── KPI 숫자 */
+  .kpi {
+    font-size: 36px;
+    letter-spacing: -1px;
+  }
+
+  /* ── 검색 인풋 pill */
+  .search {
+    border-radius: 20px;
+    padding: 7px 12px;
+  }
+
+  /* ── field 높이 */
+  .field {
+    min-height: 38px;
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+
+  /* ── 필터 chip row wrapping */
+  .filters {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .filters .field {
+    flex-shrink: 0;
+  }
+}
+
+/* ── 360px 초소형 (Galaxy S24 실 CSS px)  */
+@media (max-width: 380px) {
+  .topbar .pageTitle h2 {
+    font-size: 16px;
+  }
+
+  .topbar .btn {
+    padding: 6px 10px;
+    font-size: 11.5px;
+  }
+
+  .kpi {
+    font-size: 30px;
+  }
+
+  .item .ic {
+    width: 34px;
+    height: 34px;
+  }
+
+  .tab {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+}
+
 
 
 /* ╔══════════════════════════════════════════════════════════╗
