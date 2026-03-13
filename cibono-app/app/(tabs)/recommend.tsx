@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
@@ -17,6 +18,12 @@ type Suggestion = {
   score: number;
 };
 
+type Inventory = {
+  id: number;
+  itemName: string;
+  expiresAt?: string | null;
+};
+
 const THEME = {
   bg: "#F3F8F1",
   surface: "#FFFFFF",
@@ -30,13 +37,29 @@ const THEME = {
   ok: "#27AE60",
 };
 
-function badgeFor(item: Suggestion) {
-  if (item.missingCount <= 0)
+function daysUntil(dateStr?: string | null): number | null {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map((v) => Number(v));
+  if (!y || !m || !d) return null;
+  const target = new Date(y, m - 1, d);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor(
+    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+}
+
+function norm(s: string) {
+  return (s || "").replace(/\s+/g, "").trim().toLowerCase();
+}
+
+function badgeForMissing(missingCount: number) {
+  if (missingCount <= 0)
     return { label: "부족 0", color: THEME.ok, bg: "rgba(39,174,96,0.12)" };
-  if (item.missingCount <= 1)
+  if (missingCount <= 1)
     return { label: "부족 1", color: "#B7791F", bg: "rgba(242,201,76,0.16)" };
   return {
-    label: `부족 ${item.missingCount}`,
+    label: `부족 ${missingCount}`,
     color: THEME.muted,
     bg: "rgba(107,114,128,0.12)",
   };
@@ -44,10 +67,11 @@ function badgeFor(item: Suggestion) {
 
 export default function RecommendScreen() {
   const [items, setItems] = useState<Suggestion[]>([]);
+  const [inventory, setInventory] = useState<Inventory[]>([]);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  // UI-only filters (MVP: 시각/정렬만)
+  // UI-only filters (MVP)
   const [q, setQ] = useState("");
   const [timePreset, setTimePreset] = useState<"15" | "30" | "45">("30");
   const [missingPreset, setMissingPreset] = useState<"min" | "1" | "2">("min");
@@ -57,8 +81,12 @@ export default function RecommendScreen() {
     setError("");
     setRefreshing(true);
     try {
-      const res = await api.get<Suggestion[]>("/recommendations/today");
-      setItems(res.data ?? []);
+      const [recRes, invRes] = await Promise.all([
+        api.get<Suggestion[]>("/recommendations/today"),
+        api.get<Inventory[]>("/inventory"),
+      ]);
+      setItems(recRes.data ?? []);
+      setInventory(invRes.data ?? []);
     } catch (e: any) {
       setError(explainNetworkHint(e));
     } finally {
@@ -66,35 +94,72 @@ export default function RecommendScreen() {
     }
   }, []);
 
-  React.useEffect(() => {
-    load();
-  }, [load]);
+  // ✅ 탭으로 들어올 때마다 자동 갱신 + 탭 나갈 때 검색어 초기화
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+      return () => {
+        setQ("");
+      };
+    }, [load]),
+  );
+
+  const haveSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const inv of inventory) set.add(norm(inv.itemName));
+    return set;
+  }, [inventory]);
+
+  const urgentSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const inv of inventory) {
+      const d = daysUntil(inv.expiresAt);
+      if (d !== null && d <= 2) set.add(norm(inv.itemName));
+    }
+    return set;
+  }, [inventory]);
+
+  const computed = useMemo(() => {
+    return items.map((it) => {
+      const missingList = (it.ingredients ?? []).filter(
+        (ing) => !haveSet.has(norm(ing)),
+      );
+      const missingCountComputed = missingList.length;
+      const hasUrgent = (it.ingredients ?? []).some((ing) =>
+        urgentSet.has(norm(ing)),
+      );
+      return { ...it, missingList, missingCountComputed, hasUrgent };
+    });
+  }, [haveSet, items, urgentSet]);
 
   const filtered = useMemo(() => {
-    let arr = items;
+    let arr = computed;
 
-    // search
     const keyword = q.trim().toLowerCase();
-    if (keyword) {
+    if (keyword)
       arr = arr.filter((x) => x.name.toLowerCase().includes(keyword));
-    }
 
-    // missing filter (UI preset)
-    if (missingPreset === "1") arr = arr.filter((x) => x.missingCount <= 1);
-    if (missingPreset === "2") arr = arr.filter((x) => x.missingCount <= 2);
+    if (missingPreset === "1")
+      arr = arr.filter((x) => x.missingCountComputed <= 1);
+    if (missingPreset === "2")
+      arr = arr.filter((x) => x.missingCountComputed <= 2);
 
-    // "부족 최소"는 정렬로 처리
     if (missingPreset === "min") {
       arr = [...arr].sort(
-        (a, b) => a.missingCount - b.missingCount || b.score - a.score,
+        (a, b) =>
+          a.missingCountComputed - b.missingCountComputed ||
+          Number(b.hasUrgent) - Number(a.hasUrgent) ||
+          b.score - a.score,
       );
     } else {
-      arr = [...arr].sort((a, b) => b.score - a.score);
+      arr = [...arr].sort(
+        (a, b) =>
+          Number(b.hasUrgent) - Number(a.hasUrgent) || b.score - a.score,
+      );
     }
 
-    // noSpicy는 MVP에서 실제 판단 데이터가 없으니 UI 상태만 유지
     return arr;
-  }, [items, missingPreset, q]);
+  }, [computed, missingPreset, q]);
 
   const Header = (
     <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
@@ -108,7 +173,6 @@ export default function RecommendScreen() {
         </View>
       </View>
 
-      {/* Search */}
       <View style={styles.searchBox}>
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput
@@ -125,7 +189,6 @@ export default function RecommendScreen() {
         ) : null}
       </View>
 
-      {/* Filters (UI example like recommend.html) */}
       <View style={styles.filters}>
         <View style={styles.filterRow}>
           <Text style={styles.filterLabel}>시간</Text>
@@ -197,7 +260,6 @@ export default function RecommendScreen() {
         </View>
       </View>
 
-      {/* Error banner */}
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
@@ -206,7 +268,7 @@ export default function RecommendScreen() {
 
       <View style={styles.sectionHead}>
         <Text style={styles.h3}>오늘의 추천</Text>
-        <Text style={styles.meta}>필터 UI 예시 포함</Text>
+        <Text style={styles.meta}>탭 이동 시 자동 갱신</Text>
       </View>
     </View>
   );
@@ -220,29 +282,19 @@ export default function RecommendScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
         ListHeaderComponent={Header}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 110 }}
         numColumns={2}
         columnWrapperStyle={{ paddingHorizontal: 14, gap: 12 }}
-        renderItem={({ item }) => {
-          const badge = badgeFor(item);
-          const headlineBadge =
-            item.score >= 10
-              ? {
-                  label: "임박 포함",
-                  color: THEME.danger,
-                  bg: "rgba(235,87,87,0.12)",
-                }
-              : item.score >= 7
-                ? {
-                    label: "임박 D-2",
-                    color: "#B7791F",
-                    bg: "rgba(242,201,76,0.16)",
-                  }
-                : {
-                    label: "가벼움",
-                    color: THEME.ok,
-                    bg: "rgba(39,174,96,0.12)",
-                  };
+        renderItem={({ item }: any) => {
+          const missingBadge = badgeForMissing(item.missingCountComputed);
+
+          const headlineBadge = item.hasUrgent
+            ? {
+                label: "임박 포함",
+                color: THEME.danger,
+                bg: "rgba(235,87,87,0.12)",
+              }
+            : { label: "추천", color: "#B7791F", bg: "rgba(242,201,76,0.16)" };
 
           return (
             <View style={[styles.card, { flex: 1 }]}>
@@ -261,9 +313,11 @@ export default function RecommendScreen() {
                 </View>
               </View>
 
-              <Text style={styles.desc} numberOfLines={4}>
+              <Text style={styles.desc} numberOfLines={6}>
                 사용 재료: {item.ingredients.join(", ")}
-                {"\n"}부족 재료: {item.missingCount}개
+                {"\n"}
+                부족 재료({item.missingCountComputed}):{" "}
+                {item.missingList.length ? item.missingList.join(", ") : "없음"}
               </Text>
 
               <View style={{ height: 10 }} />
@@ -280,16 +334,17 @@ export default function RecommendScreen() {
                   </Text>
                 </View>
 
-                <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                  <Text style={[styles.badgeText, { color: badge.color }]}>
-                    {badge.label}
+                <View
+                  style={[styles.badge, { backgroundColor: missingBadge.bg }]}
+                >
+                  <Text
+                    style={[styles.badgeText, { color: missingBadge.color }]}
+                  >
+                    {missingBadge.label}
                   </Text>
                 </View>
 
                 <Pressable
-                  onPress={() => {
-                    // MVP: 상세 레시피 화면은 아직 없음 (동료 작업/확장 포인트)
-                  }}
                   style={({ pressed }) => [
                     styles.btn,
                     pressed && { opacity: 0.9 },
@@ -391,7 +446,6 @@ const styles: any = {
     color: THEME.muted,
     marginRight: 4,
   },
-
   filterChip: {
     paddingHorizontal: 10,
     paddingVertical: 8,

@@ -28,7 +28,6 @@ public class RecipeService {
 
     // 추천 요리 score 계산 메서드
     public List<RecipeSuggestion> recommendToday(long userId){
-        System.out.println("you here?2");
         List<Inventory> invs = inventoryRepository.findByUserIdOrderByExpiresAtAsc(userId);
 
         // 현재 냉장고에 있는 재료명
@@ -64,13 +63,6 @@ public class RecipeService {
 
             suggestions.add(new RecipeSuggestion(r.name, r.ingredients, missing, score));
         }
-
-        System.out.println("you here?3");
-
-        System.out.println(suggestions.stream()
-                .sorted(Comparator.comparingInt(RecipeSuggestion::score).reversed())
-                .limit(10)
-                .toList());
 
         return suggestions.stream()
                 .sorted(Comparator.comparingInt(RecipeSuggestion::score).reversed())
