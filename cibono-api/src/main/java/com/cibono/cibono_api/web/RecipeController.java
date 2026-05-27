@@ -17,7 +17,6 @@ public class RecipeController {
 
     @GetMapping("/recommendations/today")
     public List<RecipeService.RecipeSuggestion> today(){
-        System.out.println("you here?1");
         return recipeService.recommendToday(UserContext.userId());
     }
 }
