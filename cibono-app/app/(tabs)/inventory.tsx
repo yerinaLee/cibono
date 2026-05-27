@@ -7,8 +7,10 @@ import {
   Pressable,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { api, explainNetworkHint } from "../../src/api/client";
@@ -19,9 +21,9 @@ type Inventory = {
   itemName: string;
   quantity: number;
   unit?: string | null;
-  storage: string; // FRIDGE/FREEZER/PANTRY
-  purchasedAt?: string | null; // YYYY-MM-DD
-  expiresAt?: string | null; // YYYY-MM-DD
+  storage: string;
+  purchasedAt?: string | null;
+  expiresAt?: string | null;
 };
 
 const THEME = {
@@ -48,60 +50,58 @@ type FoodCategory =
   | "SEAFOOD"
   | "OTHER";
 
+const UNIT_PRESETS = ["개", "병", "묶음", "판"];
+
+const DATE_PRESETS = [
+  { label: "오늘", days: 0 },
+  { label: "+7일", days: 7 },
+  { label: "+14일", days: 14 },
+  { label: "+30일", days: 30 },
+  { label: "+60일", days: 60 },
+  { label: "+1년", days: 365 },
+];
+
 function daysUntil(dateStr?: string | null): number | null {
   if (!dateStr) return null;
-  const [y, m, d] = dateStr.split("-").map((v) => Number(v));
+  const [y, m, d] = dateStr.split("-").map(Number);
   if (!y || !m || !d) return null;
   const target = new Date(y, m - 1, d);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffMs = target.getTime() - today.getTime();
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return Math.floor(
+    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
 }
 
-function storageLabel(storage: string) {
-  switch (storage) {
-    case "FRIDGE":
-      return "냉장";
-    case "FREEZER":
-      return "냉동";
-    case "PANTRY":
-      return "실온";
-    default:
-      return storage;
-  }
+function storageLabel(s: string) {
+  return s === "FRIDGE"
+    ? "냉장"
+    : s === "FREEZER"
+      ? "냉동"
+      : s === "PANTRY"
+        ? "실온"
+        : s;
 }
 
-function urgencyBadge(d: number | null) {
+function urgencyInfo(d: number | null) {
   if (d === null)
-    return {
-      label: "미설정",
-      color: THEME.muted,
-      bg: "rgba(107,114,128,0.12)",
-    };
-
-  // ✅ 유통기한 지난 경우
+    return { icon: "·", color: THEME.muted, cardBg: "rgba(243,248,241,0.6)" };
   if (d < 0)
-    return {
-      label: "긴급 소진",
-      color: THEME.danger,
-      bg: "rgba(235,87,87,0.14)",
-    };
-
+    return { icon: "🚨", color: THEME.danger, cardBg: "rgba(235,87,87,0.13)" };
   if (d === 0)
-    return {
-      label: "D-0 임박",
-      color: THEME.danger,
-      bg: "rgba(235,87,87,0.12)",
-    };
-
+    return { icon: "🔴", color: THEME.danger, cardBg: "rgba(235,87,87,0.10)" };
   if (d <= 2)
-    return { label: `D-${d}`, color: "#B7791F", bg: "rgba(242,201,76,0.16)" };
-
-  return { label: "여유", color: THEME.ok, bg: "rgba(39,174,96,0.12)" };
+    return { icon: "🟡", color: "#B7791F", cardBg: "rgba(242,201,76,0.16)" };
+  return { icon: "🟢", color: THEME.ok, cardBg: "rgba(127,183,126,0.10)" };
 }
 
-// MVP: 프론트 추론 카테고리
+function ddayLabel(d: number | null): string {
+  if (d === null) return "기한 미설정";
+  if (d < 0) return `D+${Math.abs(d)}`;
+  if (d === 0) return "D-0";
+  return `D-${d}`;
+}
+
 function inferCategory(itemName: string): FoodCategory {
   const s = (itemName || "").replace(/\s+/g, "");
   if (/(우유|치즈|요거트|버터)/.test(s)) return "DAIRY";
@@ -114,37 +114,126 @@ function inferCategory(itemName: string): FoodCategory {
 }
 
 function categoryLabel(cat: FoodCategory) {
-  switch (cat) {
-    case "ALL":
-      return "전체";
-    case "VEG":
-      return "채소";
-    case "MEAT":
-      return "육류";
-    case "DAIRY":
-      return "유제품";
-    case "EGG":
-      return "계란";
-    case "SEAFOOD":
-      return "해산물";
-    default:
-      return "기타";
-  }
+  const map: Record<FoodCategory, string> = {
+    ALL: "전체",
+    VEG: "채소",
+    MEAT: "육류",
+    DAIRY: "유제품",
+    EGG: "계란",
+    SEAFOOD: "해산물",
+    OTHER: "기타",
+  };
+  return map[cat];
 }
 
 function sortLabel(k: SortKey) {
-  switch (k) {
-    case "PURCHASED_DESC":
-      return "구매일자순";
-    case "EXP_ASC":
-      return "유통기한↑";
-    case "EXP_DESC":
-      return "유통기한↓";
-    case "QTY_DESC":
-      return "수량순";
-    default:
-      return "유통기한↑";
-  }
+  const map: Record<SortKey, string> = {
+    PURCHASED_DESC: "구매일자순",
+    EXP_ASC: "유통기한↑",
+    EXP_DESC: "유통기한↓",
+    QTY_DESC: "수량순",
+  };
+  return map[k];
+}
+
+function formatDateInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
+
+function addDays(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function DateField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>유통기한</Text>
+      <TextInput
+        value={value}
+        onChangeText={(t) => onChange(formatDateInput(t))}
+        placeholder="YYYY-MM-DD"
+        placeholderTextColor="rgba(31,41,55,0.45)"
+        style={styles.input}
+        keyboardType="numeric"
+        maxLength={10}
+      />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginTop: 6 }}
+      >
+        <View style={{ flexDirection: "row", gap: 6 }}>
+          {DATE_PRESETS.map((p) => (
+            <Pressable
+              key={p.label}
+              onPress={() => onChange(addDays(p.days))}
+              style={({ pressed }) => [
+                styles.presetChip,
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={styles.presetChipText}>{p.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+function UnitField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={[styles.field, { flex: 1 }]}>
+      <Text style={styles.label}>단위</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder="직접 입력"
+        placeholderTextColor="rgba(31,41,55,0.45)"
+        style={styles.input}
+        autoCapitalize="none"
+      />
+      <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
+        {UNIT_PRESETS.map((u) => (
+          <Pressable
+            key={u}
+            onPress={() => onChange(u)}
+            style={({ pressed }) => [
+              styles.presetChip,
+              value === u && styles.presetChipActive,
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <Text
+              style={[
+                styles.presetChipText,
+                value === u && styles.presetChipTextActive,
+              ]}
+            >
+              {u}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
 }
 
 export default function InventoryScreen() {
@@ -152,8 +241,9 @@ export default function InventoryScreen() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  // UI states
   const [q, setQ] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Inventory | null>(null);
@@ -162,19 +252,20 @@ export default function InventoryScreen() {
   const [storageFilter, setStorageFilter] = useState<StorageFilter>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<FoodCategory>("ALL");
 
-  // Add form
   const [name, setName] = useState("");
   const [qty, setQty] = useState("1");
   const [unit, setUnit] = useState("개");
   const [storage, setStorage] = useState<"FRIDGE" | "FREEZER" | "PANTRY">(
     "FRIDGE",
   );
-  const [expiresAt, setExpiresAt] = useState(""); // YYYY-MM-DD
+  const [expiresAt, setExpiresAt] = useState("");
 
-  // Edit form
+  const [editName, setEditName] = useState("");
   const [editQty, setEditQty] = useState("1");
   const [editUnit, setEditUnit] = useState("");
-  const [editStorage, setEditStorage] = useState<"FRIDGE" | "FREEZER" | "PANTRY">("FRIDGE");
+  const [editStorage, setEditStorage] = useState<
+    "FRIDGE" | "FREEZER" | "PANTRY"
+  >("FRIDGE");
   const [editExpiresAt, setEditExpiresAt] = useState("");
 
   const load = useCallback(async () => {
@@ -194,7 +285,6 @@ export default function InventoryScreen() {
     load();
   }, [load]);
 
-  // 자주 사는 재료(현 inventory 기준 빈도)
   const frequent = useMemo(() => {
     const map = new Map<string, number>();
     for (const it of items) {
@@ -204,35 +294,26 @@ export default function InventoryScreen() {
     }
     return [...map.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([name]) => name);
+      .slice(0, 8)
+      .map(([n]) => n);
   }, [items]);
 
   const filtered = useMemo(() => {
     const keyword = q.trim().toLowerCase();
     let arr = items;
-
-    if (keyword) {
+    if (keyword)
       arr = arr.filter((x) =>
         (x.itemName || "").toLowerCase().includes(keyword),
       );
-    }
-
-    if (storageFilter !== "ALL") {
+    if (storageFilter !== "ALL")
       arr = arr.filter((x) => x.storage === storageFilter);
-    }
-
-    if (categoryFilter !== "ALL") {
+    if (categoryFilter !== "ALL")
       arr = arr.filter((x) => inferCategory(x.itemName) === categoryFilter);
-    }
-
-    // sort
-    arr = [...arr].sort((a, b) => {
-      const expA = a.expiresAt ?? "9999-12-31";
-      const expB = b.expiresAt ?? "9999-12-31";
-      const purA = a.purchasedAt ?? "0000-00-00";
-      const purB = b.purchasedAt ?? "0000-00-00";
-
+    return [...arr].sort((a, b) => {
+      const expA = a.expiresAt ?? "9999-12-31",
+        expB = b.expiresAt ?? "9999-12-31";
+      const purA = a.purchasedAt ?? "0000-00-00",
+        purB = b.purchasedAt ?? "0000-00-00";
       switch (sortKey) {
         case "PURCHASED_DESC":
           return purB.localeCompare(purA);
@@ -240,14 +321,30 @@ export default function InventoryScreen() {
           return expB.localeCompare(expA);
         case "QTY_DESC":
           return (b.quantity ?? 0) - (a.quantity ?? 0);
-        case "EXP_ASC":
         default:
           return expA.localeCompare(expB);
       }
     });
-
-    return arr;
   }, [items, q, storageFilter, categoryFilter, sortKey]);
+
+  // 3열 그리드 — 남는 칸을 null로 채워 마지막 행도 정사각형 유지
+  const displayData = useMemo((): (Inventory | null)[] => {
+    const rem = filtered.length % 3;
+    if (rem === 0) return filtered;
+    return [...filtered, ...Array(3 - rem).fill(null)];
+  }, [filtered]);
+
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (sortKey !== "EXP_ASC") n++;
+    if (storageFilter !== "ALL") n++;
+    if (categoryFilter !== "ALL") n++;
+    return n;
+  }, [sortKey, storageFilter, categoryFilter]);
+
+  const { width: windowWidth } = useWindowDimensions();
+  // 3열 고정 너비: 패딩(10*2) + 갭(8*2) 제외 후 1/3
+  const cardWidth = Math.floor((windowWidth - 20 - 16) / 3);
 
   const resetForm = useCallback(() => {
     setName("");
@@ -257,11 +354,6 @@ export default function InventoryScreen() {
     setExpiresAt("");
   }, []);
 
-  const openAddPrefill = useCallback((itemName: string) => {
-    setName(itemName);
-    setIsAddOpen(true);
-  }, []);
-
   const add = useCallback(async () => {
     setError("");
     const trimmedName = name.trim();
@@ -269,22 +361,19 @@ export default function InventoryScreen() {
       setError("품목명을 입력해줘.");
       return;
     }
-
     const parsedQty = Number(qty || "1");
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
       setError("수량은 0보다 큰 숫자여야 해.");
       return;
     }
-
     try {
       const body: any = {
         itemName: trimmedName,
         quantity: parsedQty,
-        unit: unit.trim() ? unit.trim() : null,
+        unit: unit.trim() || null,
         storage,
       };
       if (expiresAt.trim()) body.expiresAt = expiresAt.trim();
-
       await api.post("/inventory", body);
       setIsAddOpen(false);
       resetForm();
@@ -294,45 +383,21 @@ export default function InventoryScreen() {
     }
   }, [expiresAt, load, name, qty, resetForm, storage, unit]);
 
-  // ✅ 수량 스텝퍼: -/+ 로 바로 조절. 0이면 자동 삭제 시도
   const bumpQty = useCallback(
     async (inv: Inventory, delta: number) => {
-      setError("");
-
       const next = Number(inv.quantity ?? 0) + delta;
-
-      // optimistic update
       setItems((prev) =>
         prev.map((x) =>
           x.id === inv.id ? { ...x, quantity: Math.max(0, next) } : x,
         ),
       );
-
       try {
-        if (next <= 0) {
-          // 자동 삭제
-          await api.delete(`/inventory/${inv.id}`);
-        } else {
-          await api.patch(`/inventory/${inv.id}`, { quantity: next });
-        }
-        await load();
-      } catch (e: any) {
-        // rollback
-        setError(explainNetworkHint(e));
-        await load();
-      }
-    },
-    [load],
-  );
-
-  const remove = useCallback(
-    async (id: number) => {
-      setError("");
-      try {
-        await api.delete(`/inventory/${id}`);
+        if (next <= 0) await api.delete(`/inventory/${inv.id}`);
+        else await api.patch(`/inventory/${inv.id}`, { quantity: next });
         await load();
       } catch (e: any) {
         setError(explainNetworkHint(e));
+        await load();
       }
     },
     [load],
@@ -340,9 +405,10 @@ export default function InventoryScreen() {
 
   const openEdit = useCallback((inv: Inventory) => {
     setEditTarget(inv);
+    setEditName(inv.itemName);
     setEditQty(String(inv.quantity));
     setEditUnit(inv.unit ?? "");
-    setEditStorage((inv.storage as "FRIDGE" | "FREEZER" | "PANTRY") ?? "FRIDGE");
+    setEditStorage((inv.storage as any) ?? "FRIDGE");
     setEditExpiresAt(inv.expiresAt ?? "");
     setIsEditOpen(true);
   }, []);
@@ -351,6 +417,26 @@ export default function InventoryScreen() {
     setIsEditOpen(false);
     setEditTarget(null);
   }, []);
+
+  const deleteFromEdit = useCallback(async () => {
+    if (!editTarget) return;
+    Alert.alert("삭제할까?", editTarget.itemName, [
+      { text: "취소", style: "cancel" },
+      {
+        text: "삭제",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.delete(`/inventory/${editTarget.id}`);
+            closeEdit();
+            await load();
+          } catch (e: any) {
+            setError(explainNetworkHint(e));
+          }
+        },
+      },
+    ]);
+  }, [editTarget, closeEdit, load]);
 
   const saveEdit = useCallback(async () => {
     if (!editTarget) return;
@@ -362,26 +448,36 @@ export default function InventoryScreen() {
     }
     try {
       await api.patch(`/inventory/${editTarget.id}`, {
+        itemName: editName.trim() || editTarget.itemName,
         quantity: parsedQty,
-        unit: editUnit.trim() ? editUnit.trim() : null,
+        unit: editUnit.trim() || null,
         storage: editStorage,
-        expiresAt: editExpiresAt.trim() ? editExpiresAt.trim() : null,
+        expiresAt: editExpiresAt.trim() || null,
       });
       closeEdit();
       await load();
     } catch (e: any) {
       setError(explainNetworkHint(e));
     }
-  }, [closeEdit, editExpiresAt, editQty, editStorage, editTarget, editUnit, load]);
+  }, [
+    closeEdit,
+    editExpiresAt,
+    editName,
+    editQty,
+    editStorage,
+    editTarget,
+    editUnit,
+    load,
+  ]);
 
   const Header = (
-    <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
+    <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8 }}>
+      {/* 타이틀 + 재료 추가 */}
       <View style={styles.topbar}>
         <View style={{ flex: 1 }}>
           <Text style={styles.h2}>Inventory</Text>
           <Text style={styles.sub}>냉장고 재고(유통기한) 관리</Text>
         </View>
-
         <Pressable
           onPress={() => setIsAddOpen(true)}
           style={({ pressed }) => [
@@ -393,132 +489,139 @@ export default function InventoryScreen() {
         </Pressable>
       </View>
 
-      {/* 자주 사는 식재료 */}
-      {frequent.length ? (
-        <View style={styles.frequentBox}>
-          <Text style={styles.frequentTitle}>자주 쓰는 재료</Text>
-          <View style={styles.chipsRow}>
-            {frequent.map((n) => (
+      {/* 툴바: 🔍 검색 아이콘 + ⊟ 필터 아이콘 */}
+      <View style={styles.toolbar}>
+        <Pressable
+          onPress={() => setShowSearch((p) => !p)}
+          style={({ pressed }) => [
+            styles.iconCircle,
+            showSearch && styles.iconCircleActive,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Text style={styles.toolbarIconText}>🔍</Text>
+        </Pressable>
+        <View>
+          <Pressable
+            onPress={() => setFilterOpen((p) => !p)}
+            style={({ pressed }) => [
+              styles.iconCircle,
+              filterOpen && styles.iconCircleActive,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.toolbarIconText}>🧪</Text>
+          </Pressable>
+          {activeFilterCount > 0 && <View style={styles.badgeDot} />}
+        </View>
+      </View>
+
+      {/* 인라인 검색창 */}
+      {showSearch && (
+        <View style={styles.inlineSearch}>
+          <Text style={styles.searchIconText}>⌕</Text>
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder="재고 검색 (예: 우유, 대파)"
+            placeholderTextColor="rgba(31,41,55,0.45)"
+            style={styles.searchInput}
+            autoFocus
+          />
+          {q.length > 0 && (
+            <Pressable onPress={() => setQ("")} style={styles.clearBtn}>
+              <Text style={{ color: THEME.muted, fontWeight: "700" }}>×</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {/* 필터 패널 */}
+      {filterOpen && (
+        <View style={styles.filterPanel}>
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>정렬</Text>
+            {(
+              ["PURCHASED_DESC", "EXP_ASC", "EXP_DESC", "QTY_DESC"] as const
+            ).map((k) => (
               <Pressable
-                key={n}
-                onPress={() => openAddPrefill(n)}
+                key={k}
+                onPress={() => setSortKey(k)}
                 style={({ pressed }) => [
-                  styles.chip,
+                  styles.filterChip,
+                  sortKey === k && styles.filterChipActive,
                   pressed && { opacity: 0.9 },
                 ]}
               >
-                <Text style={styles.chipText}>{n}</Text>
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    sortKey === k && styles.filterChipTextActive,
+                  ]}
+                >
+                  {sortLabel(k)}
+                </Text>
               </Pressable>
             ))}
           </View>
-        </View>
-      ) : null}
-
-      {/* Search */}
-      <View style={styles.searchBox}>
-        <Text style={styles.searchIcon}>⌕</Text>
-        <TextInput
-          value={q}
-          onChangeText={setQ}
-          placeholder="재고 검색 (예: 우유, 대파)"
-          placeholderTextColor="rgba(31,41,55,0.45)"
-          style={styles.searchInput}
-        />
-        {q.length > 0 ? (
-          <Pressable onPress={() => setQ("")} style={styles.clearBtn}>
-            <Text style={{ color: THEME.muted, fontWeight: "700" }}>×</Text>
-          </Pressable>
-        ) : null}
-      </View>
-
-      {/* Filters */}
-      <View style={styles.sectionHead}>
-        <View style={styles.filterRow}>
-          <Text style={styles.filterLabel}>정렬</Text>
-          {(["PURCHASED_DESC", "EXP_ASC", "EXP_DESC", "QTY_DESC"] as const).map(
-            (k) => {
-              const active = sortKey === k;
-              return (
-                <Pressable
-                  key={k}
-                  onPress={() => setSortKey(k)}
-                  style={({ pressed }) => [
-                    styles.filterChip,
-                    active && styles.filterChipActive,
-                    pressed && { opacity: 0.9 },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      active && styles.filterChipTextActive,
-                    ]}
-                  >
-                    {sortLabel(k)}
-                  </Text>
-                </Pressable>
-              );
-            },
-          )}
-        </View>
-
-        <View style={styles.filterRow}>
-          <Text style={styles.filterLabel}>보관</Text>
-          {(["ALL", "FRIDGE", "FREEZER", "PANTRY"] as const).map((k) => {
-            const active = storageFilter === k;
-            const label = k === "ALL" ? "전체" : storageLabel(k);
-            return (
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>보관</Text>
+            {(["ALL", "FRIDGE", "FREEZER", "PANTRY"] as const).map((k) => (
               <Pressable
                 key={k}
                 onPress={() => setStorageFilter(k)}
                 style={({ pressed }) => [
                   styles.filterChip,
-                  active && styles.filterChipActive,
+                  storageFilter === k && styles.filterChipActive,
                   pressed && { opacity: 0.9 },
                 ]}
               >
                 <Text
                   style={[
                     styles.filterChipText,
-                    active && styles.filterChipTextActive,
+                    storageFilter === k && styles.filterChipTextActive,
                   ]}
                 >
-                  {label}
+                  {k === "ALL" ? "전체" : storageLabel(k)}
                 </Text>
               </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={styles.filterRow}>
-          <Text style={styles.filterLabel}>분류</Text>
-          {(
-            ["ALL", "VEG", "MEAT", "DAIRY", "EGG", "SEAFOOD", "OTHER"] as const
-          ).map((k) => {
-            const active = categoryFilter === k;
-            return (
+            ))}
+          </View>
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>분류</Text>
+            {(
+              [
+                "ALL",
+                "VEG",
+                "MEAT",
+                "DAIRY",
+                "EGG",
+                "SEAFOOD",
+                "OTHER",
+              ] as const
+            ).map((k) => (
               <Pressable
                 key={k}
                 onPress={() => setCategoryFilter(k)}
                 style={({ pressed }) => [
                   styles.filterChip,
-                  active && styles.filterChipActive,
+                  categoryFilter === k && styles.filterChipActive,
                   pressed && { opacity: 0.9 },
                 ]}
               >
                 <Text
                   style={[
                     styles.filterChipText,
-                    active && styles.filterChipTextActive,
+                    categoryFilter === k && styles.filterChipTextActive,
                   ]}
                 >
                   {categoryLabel(k)}
                 </Text>
               </Pressable>
-            );
-          })}
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -531,117 +634,71 @@ export default function InventoryScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       <FlatList
-        data={filtered}
-        keyExtractor={(x) => String(x.id)}
+        data={displayData}
+        keyExtractor={(x, i) => (x ? String(x.id) : `pad-${i}`)}
+        numColumns={3}
+        columnWrapperStyle={{ paddingHorizontal: 10, gap: 8 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
         ListHeaderComponent={Header}
         contentContainerStyle={{ paddingBottom: 110 }}
         renderItem={({ item }) => {
-          const d = daysUntil(item.expiresAt);
-          const badge = urgencyBadge(d);
+          if (!item)
+            return <View style={{ width: cardWidth, minHeight: 140 }} />;
 
-          const borderColor =
-            d !== null && d <= 2 ? "rgba(242,201,76,0.35)" : THEME.border;
+          const d = daysUntil(item.expiresAt);
+          const u = urgencyInfo(d);
+          const label = ddayLabel(d);
 
           return (
-            <View style={[styles.card, { marginHorizontal: 14, borderColor }]}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemName} numberOfLines={1}>
+            <Pressable
+              onPress={() => openEdit(item)}
+              style={({ pressed }) => [
+                styles.card,
+                {
+                  backgroundColor: u.cardBg,
+                  width: cardWidth,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <View style={styles.cardTop}>
+                <Text style={styles.itemName} numberOfLines={2}>
                   {item.itemName}
                 </Text>
-
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: badge.bg, borderColor: "transparent" },
-                  ]}
-                >
-                  <Text style={[styles.badgeText, { color: badge.color }]}>
-                    {badge.label}
-                  </Text>
-                </View>
+                <Text style={styles.urgencyIcon}>{u.icon}</Text>
               </View>
-
-              <Text style={styles.itemSub}>
-                보관: {storageLabel(item.storage)} · 유통기한:{" "}
-                {item.expiresAt ?? "-"}
-                {d !== null
-                  ? ` (D${d >= 0 ? `-${d}` : `+${Math.abs(d)}`})`
-                  : ""}
+              <Text style={styles.itemMeta} numberOfLines={1}>
+                {storageLabel(item.storage)}
+                {"  "}
+                {item.expiresAt ?? "—"}
               </Text>
-
-              <View style={{ height: 10 }} />
-
-              {/* ✅ 수량 스텝퍼 (수정이 더 쉬움) */}
-              <View style={styles.qtyRow}>
-                <Text style={styles.qtyLabel}>수량</Text>
-
-                <View style={styles.stepper}>
-                  <Pressable
-                    onPress={() => bumpQty(item, -1)}
-                    style={({ pressed }) => [
-                      styles.stepBtn,
-                      pressed && { opacity: 0.85 },
-                    ]}
-                  >
-                    <Text style={styles.stepBtnText}>−</Text>
-                  </Pressable>
-
-                  <View style={styles.qtyBox}>
-                    <Text style={styles.qtyText}>
-                      {item.quantity}
-                      {item.unit ?? ""}
-                    </Text>
-                  </View>
-
-                  <Pressable
-                    onPress={() => bumpQty(item, +1)}
-                    style={({ pressed }) => [
-                      styles.stepBtn,
-                      pressed && { opacity: 0.85 },
-                    ]}
-                  >
-                    <Text style={styles.stepBtnText}>＋</Text>
-                  </Pressable>
-                </View>
-
+              <Text style={[styles.dday, { color: u.color }]}>{label}</Text>
+              <View style={{ flex: 1 }} />
+              <View style={styles.stepper}>
                 <Pressable
-                  onPress={() => openEdit(item)}
-                  style={({ pressed }) => [
-                    styles.smallGhost,
-                    pressed && { opacity: 0.85 },
-                  ]}
+                  onPress={() => bumpQty(item, -1)}
+                  style={styles.stepBtn}
                 >
-                  <Text style={styles.smallGhostText}>수정</Text>
+                  <Text style={styles.stepBtnText}>−</Text>
                 </Pressable>
-
-                {/* 삭제는 뒤로/작게 */}
+                <Text style={styles.qtyText}>
+                  {item.quantity}
+                  {item.unit ?? ""}
+                </Text>
                 <Pressable
-                  onPress={() =>
-                    Alert.alert("삭제할까?", item.itemName, [
-                      { text: "취소", style: "cancel" },
-                      {
-                        text: "삭제",
-                        style: "destructive",
-                        onPress: () => remove(item.id),
-                      },
-                    ])
-                  }
-                  style={({ pressed }) => [
-                    styles.smallDanger,
-                    pressed && { opacity: 0.85 },
-                  ]}
+                  onPress={() => bumpQty(item, +1)}
+                  style={styles.stepBtn}
                 >
-                  <Text style={styles.smallDangerText}>삭제</Text>
+                  <Text style={styles.stepBtnText}>＋</Text>
                 </Pressable>
               </View>
-            </View>
+            </Pressable>
           );
         }}
         ListEmptyComponent={
-          <View style={[styles.empty, { marginHorizontal: 14 }]}>
+          <View style={[styles.empty, { marginHorizontal: 10 }]}>
             <View style={styles.emptyBubble}>
               <Text style={{ fontSize: 16 }}>🥬</Text>
             </View>
@@ -664,7 +721,6 @@ export default function InventoryScreen() {
         }
       />
 
-      {/* Add Modal */}
       <Modal
         transparent
         visible={isAddOpen}
@@ -676,101 +732,104 @@ export default function InventoryScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>재료 추가</Text>
               <Pressable
-                onPress={() => setIsAddOpen(false)}
-                style={({ pressed }) => [
-                  styles.iconBtn,
-                  pressed && { opacity: 0.75 },
-                ]}
+                onPress={() => {
+                  setIsAddOpen(false);
+                  resetForm();
+                }}
+                style={styles.iconBtn}
               >
                 <Text style={{ fontSize: 18, color: THEME.muted }}>×</Text>
               </Pressable>
             </View>
-
-            <View style={styles.modalBody}>
-              <View style={styles.field}>
-                <Text style={styles.label}>품목명</Text>
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="예: 우유 1L"
-                  placeholderTextColor="rgba(31,41,55,0.45)"
-                  style={styles.input}
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.grid2}>
+            <ScrollView
+              style={styles.modalScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.modalBody}>
                 <View style={styles.field}>
-                  <Text style={styles.label}>수량</Text>
+                  <Text style={styles.label}>품목명</Text>
                   <TextInput
-                    value={qty}
-                    onChangeText={setQty}
-                    placeholder="예: 1"
-                    placeholderTextColor="rgba(31,41,55,0.45)"
-                    style={styles.input}
-                    keyboardType={
-                      Platform.OS === "ios"
-                        ? "numbers-and-punctuation"
-                        : "numeric"
-                    }
-                  />
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>단위</Text>
-                  <TextInput
-                    value={unit}
-                    onChangeText={setUnit}
-                    placeholder="예: 개, g, ml"
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="예: 우유 1L"
                     placeholderTextColor="rgba(31,41,55,0.45)"
                     style={styles.input}
                     autoCapitalize="none"
                   />
+                  {frequent.length > 0 && (
+                    <View style={styles.dropdown}>
+                      <Text style={styles.dropdownLabel}>자주 쓰는 재료</Text>
+                      <View style={styles.chipsRow}>
+                        {frequent.map((n) => (
+                          <Pressable
+                            key={n}
+                            onPress={() => setName(n)}
+                            style={({ pressed }) => [
+                              styles.chip,
+                              name === n && styles.chipActive,
+                              pressed && { opacity: 0.8 },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.chipText,
+                                name === n && styles.chipTextActive,
+                              ]}
+                            >
+                              {n}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  )}
                 </View>
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>보관</Text>
-                <View style={styles.segment}>
-                  {(["FRIDGE", "FREEZER", "PANTRY"] as const).map((v) => {
-                    const active = storage === v;
-                    return (
+                <View style={styles.grid2}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>수량</Text>
+                    <TextInput
+                      value={qty}
+                      onChangeText={setQty}
+                      placeholder="예: 1"
+                      placeholderTextColor="rgba(31,41,55,0.45)"
+                      style={styles.input}
+                      keyboardType={
+                        Platform.OS === "ios"
+                          ? "numbers-and-punctuation"
+                          : "numeric"
+                      }
+                    />
+                  </View>
+                  <UnitField value={unit} onChange={setUnit} />
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.label}>보관</Text>
+                  <View style={styles.segment}>
+                    {(["FRIDGE", "FREEZER", "PANTRY"] as const).map((v) => (
                       <Pressable
                         key={v}
                         onPress={() => setStorage(v)}
                         style={({ pressed }) => [
                           styles.segmentBtn,
-                          active && styles.segmentBtnActive,
+                          storage === v && styles.segmentBtnActive,
                           pressed && { opacity: 0.9 },
                         ]}
                       >
                         <Text
                           style={[
                             styles.segmentText,
-                            active && styles.segmentTextActive,
+                            storage === v && styles.segmentTextActive,
                           ]}
                         >
                           {storageLabel(v)}
                         </Text>
                       </Pressable>
-                    );
-                  })}
+                    ))}
+                  </View>
                 </View>
+                <DateField value={expiresAt} onChange={setExpiresAt} />
               </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>유통기한</Text>
-                <TextInput
-                  value={expiresAt}
-                  onChangeText={setExpiresAt}
-                  placeholder="YYYY-MM-DD (비우면 자동 가능)"
-                  placeholderTextColor="rgba(31,41,55,0.45)"
-                  style={styles.input}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-
+            </ScrollView>
             <View style={styles.modalFooter}>
               <Pressable
                 onPress={() => {
@@ -784,9 +843,7 @@ export default function InventoryScreen() {
               >
                 <Text style={styles.btnGhostText}>취소</Text>
               </Pressable>
-
               <View style={{ width: 10 }} />
-
               <Pressable
                 onPress={add}
                 style={({ pressed }) => [
@@ -800,7 +857,7 @@ export default function InventoryScreen() {
           </View>
         </View>
       </Modal>
-      {/* Edit Modal */}
+
       <Modal
         transparent
         visible={isEditOpen}
@@ -811,101 +868,83 @@ export default function InventoryScreen() {
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>재료 수정</Text>
-              <Pressable
-                onPress={closeEdit}
-                style={({ pressed }) => [
-                  styles.iconBtn,
-                  pressed && { opacity: 0.75 },
-                ]}
-              >
+              <Pressable onPress={closeEdit} style={styles.iconBtn}>
                 <Text style={{ fontSize: 18, color: THEME.muted }}>×</Text>
               </Pressable>
             </View>
-
-            <View style={styles.modalBody}>
-              {/* 품목명은 읽기 전용 */}
-              <View style={styles.field}>
-                <Text style={styles.label}>품목명</Text>
-                <View style={[styles.input, styles.inputReadonly]}>
-                  <Text style={{ color: THEME.muted, fontSize: 14 }}>
-                    {editTarget?.itemName}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.grid2}>
+            <ScrollView
+              style={styles.modalScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.modalBody}>
                 <View style={styles.field}>
-                  <Text style={styles.label}>수량</Text>
+                  <Text style={styles.label}>품목명</Text>
                   <TextInput
-                    value={editQty}
-                    onChangeText={setEditQty}
-                    placeholder="예: 1"
-                    placeholderTextColor="rgba(31,41,55,0.45)"
-                    style={styles.input}
-                    keyboardType={
-                      Platform.OS === "ios"
-                        ? "numbers-and-punctuation"
-                        : "numeric"
-                    }
-                  />
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>단위</Text>
-                  <TextInput
-                    value={editUnit}
-                    onChangeText={setEditUnit}
-                    placeholder="예: 개, g, ml"
+                    value={editName}
+                    onChangeText={setEditName}
+                    placeholder="품목명"
                     placeholderTextColor="rgba(31,41,55,0.45)"
                     style={styles.input}
                     autoCapitalize="none"
                   />
                 </View>
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>보관</Text>
-                <View style={styles.segment}>
-                  {(["FRIDGE", "FREEZER", "PANTRY"] as const).map((v) => {
-                    const active = editStorage === v;
-                    return (
+                <View style={styles.grid2}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>수량</Text>
+                    <TextInput
+                      value={editQty}
+                      onChangeText={setEditQty}
+                      placeholder="예: 1"
+                      placeholderTextColor="rgba(31,41,55,0.45)"
+                      style={styles.input}
+                      keyboardType={
+                        Platform.OS === "ios"
+                          ? "numbers-and-punctuation"
+                          : "numeric"
+                      }
+                    />
+                  </View>
+                  <UnitField value={editUnit} onChange={setEditUnit} />
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.label}>보관</Text>
+                  <View style={styles.segment}>
+                    {(["FRIDGE", "FREEZER", "PANTRY"] as const).map((v) => (
                       <Pressable
                         key={v}
                         onPress={() => setEditStorage(v)}
                         style={({ pressed }) => [
                           styles.segmentBtn,
-                          active && styles.segmentBtnActive,
+                          editStorage === v && styles.segmentBtnActive,
                           pressed && { opacity: 0.9 },
                         ]}
                       >
                         <Text
                           style={[
                             styles.segmentText,
-                            active && styles.segmentTextActive,
+                            editStorage === v && styles.segmentTextActive,
                           ]}
                         >
                           {storageLabel(v)}
                         </Text>
                       </Pressable>
-                    );
-                  })}
+                    ))}
+                  </View>
                 </View>
+                <DateField value={editExpiresAt} onChange={setEditExpiresAt} />
               </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>유통기한</Text>
-                <TextInput
-                  value={editExpiresAt}
-                  onChangeText={setEditExpiresAt}
-                  placeholder="YYYY-MM-DD (비우면 미설정)"
-                  placeholderTextColor="rgba(31,41,55,0.45)"
-                  style={styles.input}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-
+            </ScrollView>
             <View style={styles.modalFooter}>
+              <Pressable
+                onPress={deleteFromEdit}
+                style={({ pressed }) => [
+                  styles.btnDanger,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <Text style={styles.btnDangerText}>삭제</Text>
+              </Pressable>
+              <View style={{ flex: 1 }} />
               <Pressable
                 onPress={closeEdit}
                 style={({ pressed }) => [
@@ -915,9 +954,7 @@ export default function InventoryScreen() {
               >
                 <Text style={styles.btnGhostText}>취소</Text>
               </Pressable>
-
               <View style={{ width: 10 }} />
-
               <Pressable
                 onPress={saveEdit}
                 style={({ pressed }) => [
@@ -939,56 +976,52 @@ const styles: any = {
   topbar: { flexDirection: "row", alignItems: "center", gap: 10 },
   h2: { fontSize: 22, fontWeight: "800", color: THEME.text },
   sub: { marginTop: 2, fontSize: 12, color: THEME.muted },
-  meta: { marginTop: 10, fontSize: 12, color: THEME.muted },
 
-  // frequent
-  frequentBox: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    backgroundColor: "rgba(255,255,255,0.82)",
-  },
-  frequentTitle: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: THEME.muted,
-    marginBottom: 8,
-  },
-  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(127,183,126,0.35)",
-    backgroundColor: "rgba(127,183,126,0.18)",
-  },
-  chipText: { fontSize: 12, fontWeight: "900", color: THEME.brandInk },
-
-  sectionHead: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: "rgba(255,255,255,0.65)",
-    borderWidth: 1,
-    borderColor: THEME.border,
-    borderRadius: 14,
-    gap: 10,
-  },
-
-  searchBox: {
-    marginTop: 12,
+  toolbar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.9)",
+    gap: 8,
+    marginTop: 10,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: THEME.border,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  searchIcon: { color: THEME.muted, marginRight: 8, fontSize: 14 },
+  iconCircleActive: {
+    backgroundColor: "rgba(127,183,126,0.20)",
+    borderColor: "rgba(127,183,126,0.4)",
+  },
+  toolbarIconText: { fontSize: 16 },
+  badgeDot: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.brand,
+    borderWidth: 1,
+    borderColor: THEME.bg,
+  },
+
+  inlineSearch: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  searchIconText: { color: THEME.muted, marginRight: 8, fontSize: 14 },
   searchInput: { flex: 1, color: THEME.text, fontSize: 14, paddingVertical: 0 },
   clearBtn: {
     marginLeft: 8,
@@ -1002,6 +1035,15 @@ const styles: any = {
     backgroundColor: "rgba(255,255,255,0.8)",
   },
 
+  filterPanel: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: "rgba(255,255,255,0.65)",
+    borderWidth: 1,
+    borderColor: THEME.border,
+    borderRadius: 14,
+    gap: 10,
+  },
   filterRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1012,18 +1054,18 @@ const styles: any = {
     fontSize: 12,
     fontWeight: "900",
     color: THEME.muted,
-    marginRight: 6,
+    marginRight: 4,
   },
   filterChip: {
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: THEME.border,
     backgroundColor: "rgba(255,255,255,0.9)",
   },
   filterChipActive: {
-    borderColor: "rgba(127,183,126,0.35)",
+    borderColor: "rgba(127,183,126,0.4)",
     backgroundColor: "rgba(127,183,126,0.18)",
   },
   filterChipText: { fontSize: 12, fontWeight: "900", color: THEME.muted },
@@ -1040,82 +1082,64 @@ const styles: any = {
   errorText: { color: "#B42318", fontSize: 12, fontWeight: "700" },
 
   card: {
-    backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 14,
-    marginBottom: 12,
+    borderColor: THEME.border,
+    padding: 8,
+    marginBottom: 8,
+    minHeight: 140,
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-
-  rowBetween: {
+  cardTop: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
+    alignItems: "flex-start",
+    marginBottom: 3,
   },
-  itemName: { fontSize: 16, fontWeight: "900", color: THEME.text, flex: 1 },
-  itemSub: { marginTop: 6, fontSize: 12, color: THEME.muted, lineHeight: 16 },
-
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
+  itemName: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: THEME.text,
+    flex: 1,
+    marginRight: 2,
   },
-  badgeText: { fontSize: 12, fontWeight: "900" },
-
-  qtyRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
-  qtyLabel: { fontSize: 12, fontWeight: "900", color: THEME.muted, width: 34 },
+  urgencyIcon: { fontSize: 13 },
+  itemMeta: { fontSize: 10, color: THEME.muted, marginBottom: 2 },
+  dday: { fontSize: 11, fontWeight: "900", marginBottom: 4 },
 
   stepper: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
     borderColor: THEME.border,
-    borderRadius: 14,
+    borderRadius: 10,
     overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.9)",
+    backgroundColor: "rgba(255,255,255,0.7)",
+    marginBottom: 4,
   },
   stepBtn: {
-    width: 38,
-    height: 34,
+    width: 26,
+    height: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepBtnText: { fontSize: 18, fontWeight: "900", color: THEME.text },
-  qtyBox: {
+  stepBtnText: { fontSize: 13, fontWeight: "900", color: THEME.text },
+  qtyText: { fontSize: 11, fontWeight: "900", color: THEME.text },
+
+  btnDanger: {
     paddingHorizontal: 12,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qtyText: { fontSize: 13, fontWeight: "900", color: THEME.text },
-
-  smallGhost: {
-    marginLeft: "auto",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  smallGhostText: { color: THEME.text, fontWeight: "900", fontSize: 12 },
-
-  smallDanger: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 14,
     backgroundColor: "rgba(235,87,87,0.10)",
     borderWidth: 1,
-    borderColor: "rgba(235,87,87,0.25)",
+    borderColor: "rgba(235,87,87,0.30)",
   },
-  smallDangerText: { color: "#B42318", fontWeight: "900", fontSize: 12 },
+  btnDangerText: { color: "#B42318", fontWeight: "900", fontSize: 13 },
 
   btnPrimary: {
     paddingHorizontal: 14,
@@ -1126,7 +1150,6 @@ const styles: any = {
     borderColor: "rgba(15,31,22,0.10)",
   },
   btnPrimaryText: { color: THEME.brandInk, fontWeight: "900", fontSize: 13 },
-
   btnGhost: {
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1171,12 +1194,14 @@ const styles: any = {
   modal: {
     width: "100%",
     maxWidth: 520,
+    maxHeight: "85%",
     borderRadius: 18,
     backgroundColor: THEME.surface,
     borderWidth: 1,
     borderColor: THEME.border,
     overflow: "hidden",
   },
+  modalScroll: { flexGrow: 0 },
   modalHeader: {
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -1239,4 +1264,49 @@ const styles: any = {
   segmentBtnActive: { backgroundColor: "rgba(127,183,126,0.20)" },
   segmentText: { fontSize: 13, fontWeight: "900", color: THEME.muted },
   segmentTextActive: { color: THEME.text },
+
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(127,183,126,0.35)",
+    backgroundColor: "rgba(127,183,126,0.12)",
+  },
+  presetChipActive: {
+    borderColor: THEME.brand,
+    backgroundColor: "rgba(127,183,126,0.30)",
+  },
+  presetChipText: { fontSize: 12, fontWeight: "800", color: THEME.brandInk },
+  presetChipTextActive: { color: THEME.brandInk, fontWeight: "900" },
+
+  dropdown: {
+    marginTop: 6,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "rgba(255,255,255,0.95)",
+  },
+  dropdownLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: THEME.muted,
+    marginBottom: 8,
+  },
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(127,183,126,0.35)",
+    backgroundColor: "rgba(127,183,126,0.12)",
+  },
+  chipActive: {
+    borderColor: THEME.brand,
+    backgroundColor: "rgba(127,183,126,0.30)",
+  },
+  chipText: { fontSize: 12, fontWeight: "900", color: THEME.brandInk },
+  chipTextActive: { fontWeight: "900" },
 };

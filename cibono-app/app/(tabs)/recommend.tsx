@@ -11,12 +11,30 @@ import {
 } from "react-native";
 import { api, explainNetworkHint } from "../../src/api/client";
 
+type CuisineType = "ALL" | "KOREAN" | "WESTERN" | "CHINESE" | "GLOBAL";
+
 type Suggestion = {
   name: string;
   ingredients: string[];
   missingCount: number;
   score: number;
   cookingTime: number; // 분
+  cuisineType: string;
+};
+
+const CUISINE_LABELS: Record<CuisineType, string> = {
+  ALL: "전체",
+  KOREAN: "한식",
+  WESTERN: "양식",
+  CHINESE: "중식",
+  GLOBAL: "글로벌",
+};
+
+const CUISINE_COLORS: Record<string, { color: string; bg: string }> = {
+  KOREAN:  { color: "#7C3D12", bg: "rgba(251,191,36,0.18)"  },
+  WESTERN: { color: "#1E40AF", bg: "rgba(96,165,250,0.18)"  },
+  CHINESE: { color: "#991B1B", bg: "rgba(252,165,165,0.20)" },
+  GLOBAL:  { color: "#065F46", bg: "rgba(52,211,153,0.18)"  },
 };
 
 type Inventory = {
@@ -72,10 +90,10 @@ export default function RecommendScreen() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  // UI-only filters (MVP)
   const [q, setQ] = useState("");
   const [timePreset, setTimePreset] = useState<"15" | "30" | "45">("30");
   const [missingPreset, setMissingPreset] = useState<"min" | "1" | "2">("min");
+  const [cuisineFilter, setCuisineFilter] = useState<CuisineType>("ALL");
   const [noSpicy, setNoSpicy] = useState(true);
 
   const load = useCallback(async () => {
@@ -140,9 +158,11 @@ export default function RecommendScreen() {
     if (keyword)
       arr = arr.filter((x) => x.name.toLowerCase().includes(keyword));
 
-    // 조리 시간 필터: 선택한 시간 이하인 레시피만
     const maxMin = parseInt(timePreset, 10);
     arr = arr.filter((x) => (x.cookingTime ?? 0) <= maxMin);
+
+    if (cuisineFilter !== "ALL")
+      arr = arr.filter((x) => x.cuisineType === cuisineFilter);
 
     if (missingPreset === "1")
       arr = arr.filter((x) => x.missingCountComputed <= 1);
@@ -164,7 +184,7 @@ export default function RecommendScreen() {
     }
 
     return arr;
-  }, [computed, missingPreset, q, timePreset]);
+  }, [computed, cuisineFilter, missingPreset, q, timePreset]);
 
   const Header = (
     <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
@@ -250,6 +270,28 @@ export default function RecommendScreen() {
           })}
         </View>
 
+        <View style={styles.filterRow}>
+          <Text style={styles.filterLabel}>분류</Text>
+          {(["ALL", "KOREAN", "WESTERN", "CHINESE", "GLOBAL"] as const).map((v) => {
+            const active = cuisineFilter === v;
+            return (
+              <Pressable
+                key={v}
+                onPress={() => setCuisineFilter(v)}
+                style={({ pressed }) => [
+                  styles.filterChip,
+                  active && styles.filterChipActive,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                  {CUISINE_LABELS[v]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <View style={styles.switchRow}>
           <Pressable
             onPress={() => setNoSpicy((p) => !p)}
@@ -328,6 +370,16 @@ export default function RecommendScreen() {
               <View style={{ height: 10 }} />
 
               <View style={styles.footerRow}>
+                {(() => {
+                  const cc = CUISINE_COLORS[item.cuisineType] ?? { color: THEME.muted, bg: "rgba(107,114,128,0.12)" };
+                  const cl = CUISINE_LABELS[item.cuisineType as CuisineType] ?? item.cuisineType;
+                  return (
+                    <View style={[styles.badge, { backgroundColor: cc.bg }]}>
+                      <Text style={[styles.badgeText, { color: cc.color }]}>{cl}</Text>
+                    </View>
+                  );
+                })()}
+
                 <View
                   style={[
                     styles.badge,
