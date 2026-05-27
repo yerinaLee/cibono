@@ -155,6 +155,8 @@ export default function InventoryScreen() {
   // UI states
   const [q, setQ] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Inventory | null>(null);
 
   const [sortKey, setSortKey] = useState<SortKey>("EXP_ASC");
   const [storageFilter, setStorageFilter] = useState<StorageFilter>("ALL");
@@ -168,6 +170,12 @@ export default function InventoryScreen() {
     "FRIDGE",
   );
   const [expiresAt, setExpiresAt] = useState(""); // YYYY-MM-DD
+
+  // Edit form
+  const [editQty, setEditQty] = useState("1");
+  const [editUnit, setEditUnit] = useState("");
+  const [editStorage, setEditStorage] = useState<"FRIDGE" | "FREEZER" | "PANTRY">("FRIDGE");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -329,6 +337,42 @@ export default function InventoryScreen() {
     },
     [load],
   );
+
+  const openEdit = useCallback((inv: Inventory) => {
+    setEditTarget(inv);
+    setEditQty(String(inv.quantity));
+    setEditUnit(inv.unit ?? "");
+    setEditStorage((inv.storage as "FRIDGE" | "FREEZER" | "PANTRY") ?? "FRIDGE");
+    setEditExpiresAt(inv.expiresAt ?? "");
+    setIsEditOpen(true);
+  }, []);
+
+  const closeEdit = useCallback(() => {
+    setIsEditOpen(false);
+    setEditTarget(null);
+  }, []);
+
+  const saveEdit = useCallback(async () => {
+    if (!editTarget) return;
+    setError("");
+    const parsedQty = Number(editQty || "1");
+    if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
+      setError("수량은 0보다 큰 숫자여야 해.");
+      return;
+    }
+    try {
+      await api.patch(`/inventory/${editTarget.id}`, {
+        quantity: parsedQty,
+        unit: editUnit.trim() ? editUnit.trim() : null,
+        storage: editStorage,
+        expiresAt: editExpiresAt.trim() ? editExpiresAt.trim() : null,
+      });
+      closeEdit();
+      await load();
+    } catch (e: any) {
+      setError(explainNetworkHint(e));
+    }
+  }, [closeEdit, editExpiresAt, editQty, editStorage, editTarget, editUnit, load]);
 
   const Header = (
     <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
@@ -563,6 +607,16 @@ export default function InventoryScreen() {
                   </Pressable>
                 </View>
 
+                <Pressable
+                  onPress={() => openEdit(item)}
+                  style={({ pressed }) => [
+                    styles.smallGhost,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <Text style={styles.smallGhostText}>수정</Text>
+                </Pressable>
+
                 {/* 삭제는 뒤로/작게 */}
                 <Pressable
                   onPress={() =>
@@ -746,6 +800,137 @@ export default function InventoryScreen() {
           </View>
         </View>
       </Modal>
+      {/* Edit Modal */}
+      <Modal
+        transparent
+        visible={isEditOpen}
+        animationType="fade"
+        onRequestClose={closeEdit}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>재료 수정</Text>
+              <Pressable
+                onPress={closeEdit}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  pressed && { opacity: 0.75 },
+                ]}
+              >
+                <Text style={{ fontSize: 18, color: THEME.muted }}>×</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.modalBody}>
+              {/* 품목명은 읽기 전용 */}
+              <View style={styles.field}>
+                <Text style={styles.label}>품목명</Text>
+                <View style={[styles.input, styles.inputReadonly]}>
+                  <Text style={{ color: THEME.muted, fontSize: 14 }}>
+                    {editTarget?.itemName}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.grid2}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>수량</Text>
+                  <TextInput
+                    value={editQty}
+                    onChangeText={setEditQty}
+                    placeholder="예: 1"
+                    placeholderTextColor="rgba(31,41,55,0.45)"
+                    style={styles.input}
+                    keyboardType={
+                      Platform.OS === "ios"
+                        ? "numbers-and-punctuation"
+                        : "numeric"
+                    }
+                  />
+                </View>
+
+                <View style={styles.field}>
+                  <Text style={styles.label}>단위</Text>
+                  <TextInput
+                    value={editUnit}
+                    onChangeText={setEditUnit}
+                    placeholder="예: 개, g, ml"
+                    placeholderTextColor="rgba(31,41,55,0.45)"
+                    style={styles.input}
+                    autoCapitalize="none"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>보관</Text>
+                <View style={styles.segment}>
+                  {(["FRIDGE", "FREEZER", "PANTRY"] as const).map((v) => {
+                    const active = editStorage === v;
+                    return (
+                      <Pressable
+                        key={v}
+                        onPress={() => setEditStorage(v)}
+                        style={({ pressed }) => [
+                          styles.segmentBtn,
+                          active && styles.segmentBtnActive,
+                          pressed && { opacity: 0.9 },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.segmentText,
+                            active && styles.segmentTextActive,
+                          ]}
+                        >
+                          {storageLabel(v)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>유통기한</Text>
+                <TextInput
+                  value={editExpiresAt}
+                  onChangeText={setEditExpiresAt}
+                  placeholder="YYYY-MM-DD (비우면 미설정)"
+                  placeholderTextColor="rgba(31,41,55,0.45)"
+                  style={styles.input}
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalFooter}>
+              <Pressable
+                onPress={closeEdit}
+                style={({ pressed }) => [
+                  styles.btnGhost,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <Text style={styles.btnGhostText}>취소</Text>
+              </Pressable>
+
+              <View style={{ width: 10 }} />
+
+              <Pressable
+                onPress={saveEdit}
+                style={({ pressed }) => [
+                  styles.btnPrimary,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <Text style={styles.btnPrimaryText}>저장</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -911,8 +1096,18 @@ const styles: any = {
   },
   qtyText: { fontSize: 13, fontWeight: "900", color: THEME.text },
 
-  smallDanger: {
+  smallGhost: {
     marginLeft: "auto",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  smallGhostText: { color: THEME.text, fontWeight: "900", fontSize: 12 },
+
+  smallDanger: {
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 14,
@@ -1022,6 +1217,10 @@ const styles: any = {
     paddingVertical: 10,
     color: THEME.text,
     fontSize: 14,
+  },
+  inputReadonly: {
+    backgroundColor: "rgba(107,114,128,0.07)",
+    justifyContent: "center",
   },
   grid2: { flexDirection: "row", gap: 10 },
   segment: {

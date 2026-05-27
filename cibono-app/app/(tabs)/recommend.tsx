@@ -16,6 +16,7 @@ type Suggestion = {
   ingredients: string[];
   missingCount: number;
   score: number;
+  cookingTime: number; // 분
 };
 
 type Inventory = {
@@ -139,6 +140,10 @@ export default function RecommendScreen() {
     if (keyword)
       arr = arr.filter((x) => x.name.toLowerCase().includes(keyword));
 
+    // 조리 시간 필터: 선택한 시간 이하인 레시피만
+    const maxMin = parseInt(timePreset, 10);
+    arr = arr.filter((x) => (x.cookingTime ?? 0) <= maxMin);
+
     if (missingPreset === "1")
       arr = arr.filter((x) => x.missingCountComputed <= 1);
     if (missingPreset === "2")
@@ -159,7 +164,7 @@ export default function RecommendScreen() {
     }
 
     return arr;
-  }, [computed, missingPreset, q]);
+  }, [computed, missingPreset, q, timePreset]);
 
   const Header = (
     <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
@@ -330,7 +335,7 @@ export default function RecommendScreen() {
                   ]}
                 >
                   <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
-                    {timePreset}분
+                    {item.cookingTime}분
                   </Text>
                 </View>
 
