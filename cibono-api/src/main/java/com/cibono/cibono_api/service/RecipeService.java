@@ -50,14 +50,14 @@ public class RecipeService {
                 }
             }
             int score = urgencyScore + matched * 2 - missing * 3;
-            suggestions.add(new RecipeSuggestion(r.getName(), r.getIngredients(), missing, score, r.getCookingTime()));
+            suggestions.add(new RecipeSuggestion(r.getName(), r.getIngredients(), missing, score, r.getCookingTime(), r.getCuisineType()));
         }
 
         return suggestions.stream()
                 .sorted(Comparator.comparingInt(RecipeSuggestion::score).reversed())
-                .limit(10)
+                .limit(50)
                 .toList();
     }
 
-    public record RecipeSuggestion(String name, List<String> ingredients, int missingCount, int score, int cookingTime) {}
+    public record RecipeSuggestion(String name, List<String> ingredients, int missingCount, int score, int cookingTime, String cuisineType) {}
 }

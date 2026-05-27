@@ -85,8 +85,9 @@ CREATE TABLE IF NOT EXISTS alert_event (
 -- 8) 레시피
 CREATE TABLE IF NOT EXISTS recipe (
     id           BIGSERIAL    PRIMARY KEY,
-    name         VARCHAR(200) NOT NULL,
-    cooking_time INTEGER      NOT NULL DEFAULT 30  -- 단위: 분
+    name         VARCHAR(200) NOT NULL UNIQUE,
+    cooking_time INTEGER      NOT NULL DEFAULT 30,  -- 단위: 분
+    cuisine_type VARCHAR(20)  NOT NULL DEFAULT 'KOREAN'  -- KOREAN / WESTERN / CHINESE / GLOBAL
 );
 
 -- 9) 레시피 재료 (recipe 의 ingredients 컬렉션)

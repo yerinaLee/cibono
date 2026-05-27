@@ -18,6 +18,9 @@ public class Recipe {
     @Column(name = "cooking_time", nullable = false)
     private int cookingTime;
 
+    @Column(name = "cuisine_type", nullable = false, length = 20)
+    private String cuisineType;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "recipe_ingredient", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "ingredient_name", length = 200)
@@ -26,5 +29,6 @@ public class Recipe {
     public Long getId() { return id; }
     public String getName() { return name; }
     public int getCookingTime() { return cookingTime; }
+    public String getCuisineType() { return cuisineType; }
     public List<String> getIngredients() { return ingredients; }
 }
