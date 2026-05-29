@@ -27,6 +27,9 @@ public class Deal {
     @Column(name = "ends_at", nullable = false)
     private LocalDate endsAt;
 
+    @Column(name = "original_price")
+    private Integer originalPrice;
+
     @Column(name = "source", nullable = false, length = 30)
     private String source = "MANUAL";
 
@@ -45,6 +48,8 @@ public class Deal {
     public void setStartsAt(LocalDate startsAt) { this.startsAt = startsAt; }
     public LocalDate getEndsAt() { return endsAt; }
     public void setEndsAt(LocalDate endsAt) { this.endsAt = endsAt; }
+    public Integer getOriginalPrice() { return originalPrice; }
+    public void setOriginalPrice(Integer originalPrice) { this.originalPrice = originalPrice; }
     public String getSource() { return source; }
     public void setSource(String source) { this.source = source; }
 }

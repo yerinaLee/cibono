@@ -21,11 +21,17 @@ public class AlertEvent {
     @Column(name = "seen", nullable = false)
     private boolean seen = false;
 
+    @Column(name = "read_at")
+    private OffsetDateTime readAt;
+
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     public Long getDealId() { return dealId; }
     public void setDealId(Long dealId) { this.dealId = dealId; }
+    public OffsetDateTime getTriggeredAt() { return triggeredAt; }
     public boolean isSeen() { return seen; }
     public void setSeen(boolean seen) { this.seen = seen; }
+    public OffsetDateTime getReadAt() { return readAt; }
+    public void setReadAt(OffsetDateTime readAt) { this.readAt = readAt; }
 }

@@ -7,11 +7,13 @@ import java.util.List;
 import java.time.LocalDate;
 
 public interface DealRepository extends JpaRepository<Deal, Long> {
-    List<Deal> findByItemNameContainingIgnoreCase(String q);
 
-    List<Deal> findByStartsAtLessThanEqualAndEndsAtGreaterThanEqual(LocalDate from, LocalDate to);
+    List<Deal> findByStartsAtLessThanEqualAndEndsAtGreaterThanEqual(LocalDate startsAtBound, LocalDate endsAtBound);
+
+    List<Deal> findByItemNameContainingIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
+            String keyword, LocalDate startsAtBound, LocalDate endsAtBound);
 
     List<Deal> findByItemNameIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
-            String itemName, LocalDate from, LocalDate to
-    );
+            String itemName, LocalDate startsAtBound, LocalDate endsAtBound);
+
 }

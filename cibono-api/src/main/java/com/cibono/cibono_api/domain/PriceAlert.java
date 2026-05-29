@@ -26,10 +26,14 @@ public class PriceAlert {
     @Column(name = "threshold_value", precision = 10, scale = 2)
     private BigDecimal thresholdValue;
 
+    @Column(name = "is_enabled", nullable = false)
+    private boolean isEnabled = true;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
     public Long getId() { return id; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     public String getItemName() { return itemName; }
@@ -38,4 +42,6 @@ public class PriceAlert {
     public void setAnchorPrice(Integer anchorPrice) { this.anchorPrice = anchorPrice; }
     public String getThresholdType() { return thresholdType; }
     public void setThresholdType(String thresholdType) { this.thresholdType = thresholdType; }
+    public boolean isEnabled() { return isEnabled; }
+    public void setEnabled(boolean isEnabled) { this.isEnabled = isEnabled; }
 }

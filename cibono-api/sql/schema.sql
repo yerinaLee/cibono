@@ -55,8 +55,9 @@ CREATE TABLE IF NOT EXISTS deal (
     id         BIGSERIAL    PRIMARY KEY,
     store_id   BIGINT       REFERENCES store(id),
     item_name  VARCHAR(200) NOT NULL,
-    deal_price INTEGER      NOT NULL,
-    starts_at  DATE         NOT NULL,
+    deal_price     INTEGER      NOT NULL,
+    original_price INTEGER,
+    starts_at      DATE         NOT NULL,
     ends_at    DATE         NOT NULL,
     source     VARCHAR(30)  NOT NULL DEFAULT 'MANUAL',  -- MANUAL / CSV / ONLINE
     created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
@@ -70,6 +71,7 @@ CREATE TABLE IF NOT EXISTS price_alert (
     anchor_price    INTEGER        NOT NULL,
     threshold_type  VARCHAR(10)    NOT NULL DEFAULT 'LTE',  -- LTE / UNDER_PCT
     threshold_value NUMERIC(10, 2),
+    is_enabled      BOOLEAN        NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW()
 );
 
@@ -79,7 +81,8 @@ CREATE TABLE IF NOT EXISTS alert_event (
     user_id      BIGINT      NOT NULL REFERENCES app_user(id),
     deal_id      BIGINT      NOT NULL REFERENCES deal(id),
     triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    seen         BOOLEAN     NOT NULL DEFAULT FALSE
+    seen         BOOLEAN     NOT NULL DEFAULT FALSE,
+    read_at      TIMESTAMPTZ
 );
 
 -- 8) 레시피
