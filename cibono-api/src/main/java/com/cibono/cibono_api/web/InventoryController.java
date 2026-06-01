@@ -3,6 +3,8 @@ package com.cibono.cibono_api.web;
 import com.cibono.cibono_api.common.UserContext;
 import com.cibono.cibono_api.domain.Inventory;
 import com.cibono.cibono_api.repository.InventoryRepository;
+import com.cibono.cibono_api.service.GeminiService;
+import com.cibono.cibono_api.service.GeminiService.ScannedItem;
 import com.cibono.cibono_api.service.InventoryService;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,11 +15,36 @@ import java.util.List;
 public class InventoryController {
     private final InventoryRepository inventoryRepository;
     private final InventoryService inventoryService;
+    private final GeminiService geminiService;
 
-
-    public InventoryController(InventoryRepository inventoryRepository, InventoryService inventoryService) {
+    public InventoryController(InventoryRepository inventoryRepository,
+                               InventoryService inventoryService,
+                               GeminiService geminiService) {
         this.inventoryRepository = inventoryRepository;
         this.inventoryService = inventoryService;
+        this.geminiService = geminiService;
+    }
+
+    public record ScanRequest(String imageBase64, String mimeType) {}
+
+    @PostMapping("/inventory/scan")
+    public List<ScannedItem> scan(@RequestBody ScanRequest req) {
+        return geminiService.scanReceipt(req.imageBase64(), req.mimeType());
+    }
+
+    @PostMapping("/inventory/bulk")
+    public List<Inventory> bulkAdd(@RequestBody List<Inventory> reqs) {
+        return reqs.stream().map(req -> {
+            Inventory inv = new Inventory();
+            inv.setUserId(UserContext.userId());
+            inv.setItemName(req.getItemName());
+            inv.setQuantity(req.getQuantity() == null ? BigDecimal.ONE : req.getQuantity());
+            inv.setUnit(req.getUnit());
+            inv.setStorage(req.getStorage() != null ? req.getStorage() : "FRIDGE");
+            inv.setPurchasedAt(req.getPurchasedAt());
+            inv.setExpiresAt(req.getExpiresAt());
+            return inventoryService.saveWithAutoExpiry(inv);
+        }).toList();
     }
 
     @GetMapping("/inventory")
@@ -45,6 +72,7 @@ public class InventoryController {
 
         if(!inv.getUserId().equals(UserContext.userId())) throw  new IllegalArgumentException("forbidden");
 
+        if (req.getItemName() != null) inv.setItemName(req.getItemName());
         if (req.getQuantity() != null) inv.setQuantity(req.getQuantity());
         if (req.getUnit() != null) inv.setUnit(req.getUnit());
         if (req.getStorage() != null) inv.setStorage(req.getStorage());

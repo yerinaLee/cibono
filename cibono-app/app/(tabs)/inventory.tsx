@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
+  ActivityIndicator,
   FlatList,
   Modal,
   Platform,
@@ -13,6 +14,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type Inventory = {
@@ -260,6 +262,14 @@ export default function InventoryScreen() {
   );
   const [expiresAt, setExpiresAt] = useState("");
 
+  // Scan (영수증 스캔)
+  const [isScanOpen, setIsScanOpen] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanItems, setScanItems] = useState<
+    { itemName: string; quantity: string; unit: string; storage: "FRIDGE" | "FREEZER" | "PANTRY" }[]
+  >([]);
+  const [scanError, setScanError] = useState("");
+
   const [editName, setEditName] = useState("");
   const [editQty, setEditQty] = useState("1");
   const [editUnit, setEditUnit] = useState("");
@@ -438,6 +448,67 @@ export default function InventoryScreen() {
     ]);
   }, [editTarget, closeEdit, load]);
 
+  const pickAndScan = useCallback(async () => {
+    setScanError("");
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setScanError("사진 접근 권한이 필요해.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      base64: true,
+      quality: 0.6,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    setScanLoading(true);
+    setScanItems([]);
+    try {
+      const res = await api.post<{ itemName: string; quantity: number; unit: string }[]>(
+        "/inventory/scan",
+        {
+          imageBase64: asset.base64,
+          mimeType: asset.mimeType ?? "image/jpeg",
+        },
+      );
+      setScanItems(
+        (res.data ?? []).map((x) => ({
+          itemName: x.itemName,
+          quantity: String(x.quantity ?? 1),
+          unit: x.unit ?? "개",
+          storage: "FRIDGE" as const,
+        })),
+      );
+    } catch (e: any) {
+      setScanError(explainNetworkHint(e));
+    } finally {
+      setScanLoading(false);
+    }
+  }, []);
+
+  const confirmScan = useCallback(async () => {
+    const validItems = scanItems.filter((x) => x.itemName.trim());
+    if (!validItems.length) return;
+    try {
+      await api.post(
+        "/inventory/bulk",
+        validItems.map((x) => ({
+          itemName: x.itemName.trim(),
+          quantity: Number(x.quantity) || 1,
+          unit: x.unit.trim() || null,
+          storage: x.storage,
+        })),
+      );
+      setIsScanOpen(false);
+      setScanItems([]);
+      await load();
+    } catch (e: any) {
+      setScanError(explainNetworkHint(e));
+    }
+  }, [scanItems, load]);
+
   const saveEdit = useCallback(async () => {
     if (!editTarget) return;
     setError("");
@@ -489,7 +560,7 @@ export default function InventoryScreen() {
         </Pressable>
       </View>
 
-      {/* 툴바: 🔍 검색 아이콘 + ⊟ 필터 아이콘 */}
+      {/* 툴바: 🔍 검색 + ⊟ 필터 + 📷 영수증 스캔 */}
       <View style={styles.toolbar}>
         <Pressable
           onPress={() => setShowSearch((p) => !p)}
@@ -510,10 +581,19 @@ export default function InventoryScreen() {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.toolbarIconText}>🧪</Text>
+            <Text style={styles.toolbarIconText}>⊟</Text>
           </Pressable>
           {activeFilterCount > 0 && <View style={styles.badgeDot} />}
         </View>
+        <Pressable
+          onPress={() => { setIsScanOpen(true); pickAndScan(); }}
+          style={({ pressed }) => [
+            styles.iconCircle,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Text style={styles.toolbarIconText}>📷</Text>
+        </Pressable>
       </View>
 
       {/* 인라인 검색창 */}
@@ -968,6 +1048,126 @@ export default function InventoryScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Scan Modal ─────────────────────────────────────── */}
+      <Modal
+        transparent
+        visible={isScanOpen}
+        animationType="fade"
+        onRequestClose={() => { setIsScanOpen(false); setScanItems([]); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📷 영수증 / 주문내역 스캔</Text>
+              <Pressable
+                onPress={() => { setIsScanOpen(false); setScanItems([]); setScanError(""); }}
+                style={styles.iconBtn}
+              >
+                <Text style={{ fontSize: 18, color: THEME.muted }}>×</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+              <View style={styles.modalBody}>
+                {scanLoading && (
+                  <View style={styles.scanLoadingBox}>
+                    <ActivityIndicator size="large" color={THEME.brand} />
+                    <Text style={styles.scanLoadingText}>AI가 재료를 분석 중이에요...</Text>
+                  </View>
+                )}
+
+                {scanError ? (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.errorText}>{scanError}</Text>
+                  </View>
+                ) : null}
+
+                {!scanLoading && scanItems.length === 0 && !scanError && (
+                  <View style={styles.scanLoadingBox}>
+                    <Text style={{ fontSize: 32 }}>🛒</Text>
+                    <Text style={styles.scanLoadingText}>이미지를 선택하면 재료를 자동으로 추출해요</Text>
+                    <Pressable
+                      onPress={pickAndScan}
+                      style={({ pressed }) => [styles.btnPrimary, { marginTop: 12 }, pressed && { opacity: 0.85 }]}
+                    >
+                      <Text style={styles.btnPrimaryText}>이미지 선택</Text>
+                    </Pressable>
+                  </View>
+                )}
+
+                {scanItems.length > 0 && (
+                  <>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <Text style={[styles.label, { color: THEME.text }]}>추출된 재료 ({scanItems.length}개) — 수정 가능</Text>
+                      <Pressable onPress={pickAndScan}>
+                        <Text style={{ fontSize: 11, color: THEME.brand, fontWeight: "800" }}>다시 선택</Text>
+                      </Pressable>
+                    </View>
+
+                    {scanItems.map((item, idx) => (
+                      <View key={idx} style={styles.scanItemRow}>
+                        <TextInput
+                          value={item.itemName}
+                          onChangeText={(v) =>
+                            setScanItems((prev) => prev.map((x, i) => i === idx ? { ...x, itemName: v } : x))
+                          }
+                          style={[styles.input, styles.scanItemName]}
+                          placeholder="재료명"
+                          placeholderTextColor="rgba(31,41,55,0.45)"
+                        />
+                        <TextInput
+                          value={item.quantity}
+                          onChangeText={(v) =>
+                            setScanItems((prev) => prev.map((x, i) => i === idx ? { ...x, quantity: v } : x))
+                          }
+                          style={[styles.input, styles.scanItemQty]}
+                          keyboardType="numeric"
+                          placeholder="수량"
+                          placeholderTextColor="rgba(31,41,55,0.45)"
+                        />
+                        <TextInput
+                          value={item.unit}
+                          onChangeText={(v) =>
+                            setScanItems((prev) => prev.map((x, i) => i === idx ? { ...x, unit: v } : x))
+                          }
+                          style={[styles.input, styles.scanItemUnit]}
+                          placeholder="단위"
+                          placeholderTextColor="rgba(31,41,55,0.45)"
+                        />
+                        <Pressable
+                          onPress={() => setScanItems((prev) => prev.filter((_, i) => i !== idx))}
+                          style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}
+                        >
+                          <Text style={{ color: THEME.danger, fontWeight: "900", fontSize: 16 }}>×</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </View>
+            </ScrollView>
+
+            {scanItems.length > 0 && (
+              <View style={styles.modalFooter}>
+                <Pressable
+                  onPress={() => { setIsScanOpen(false); setScanItems([]); setScanError(""); }}
+                  style={({ pressed }) => [styles.btnGhost, pressed && { opacity: 0.9 }]}
+                >
+                  <Text style={styles.btnGhostText}>취소</Text>
+                </Pressable>
+                <View style={{ width: 10 }} />
+                <Pressable
+                  onPress={confirmScan}
+                  style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.9 }]}
+                >
+                  <Text style={styles.btnPrimaryText}>재고에 추가 ({scanItems.length})</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1309,4 +1509,17 @@ const styles: any = {
   },
   chipText: { fontSize: 12, fontWeight: "900", color: THEME.brandInk },
   chipTextActive: { fontWeight: "900" },
+
+  // 스캔 모달
+  scanLoadingBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 32,
+    gap: 12,
+  },
+  scanLoadingText: { fontSize: 13, color: THEME.muted, textAlign: "center", lineHeight: 20 },
+  scanItemRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  scanItemName: { flex: 3, paddingVertical: 8 },
+  scanItemQty:  { flex: 1, paddingVertical: 8 },
+  scanItemUnit: { flex: 1, paddingVertical: 8 },
 };
