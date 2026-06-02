@@ -1,6 +1,6 @@
+import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
   ActivityIndicator,
   FlatList,
   Modal,
@@ -14,7 +14,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type Inventory = {
@@ -266,9 +265,16 @@ export default function InventoryScreen() {
   const [isScanOpen, setIsScanOpen] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanItems, setScanItems] = useState<
-    { itemName: string; quantity: string; unit: string; storage: "FRIDGE" | "FREEZER" | "PANTRY" }[]
+    {
+      itemName: string;
+      quantity: string;
+      unit: string;
+      storage: "FRIDGE" | "FREEZER" | "PANTRY";
+    }[]
   >([]);
   const [scanError, setScanError] = useState("");
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const [editName, setEditName] = useState("");
   const [editQty, setEditQty] = useState("1");
@@ -304,7 +310,7 @@ export default function InventoryScreen() {
     }
     return [...map.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
+      .slice(0, 6)
       .map(([n]) => n);
   }, [items]);
 
@@ -396,18 +402,25 @@ export default function InventoryScreen() {
   const bumpQty = useCallback(
     async (inv: Inventory, delta: number) => {
       const next = Number(inv.quantity ?? 0) + delta;
+      if (next <= 0) {
+        // 삭제: 서버 반영 후 목록 갱신
+        try {
+          await api.delete(`/inventory/${inv.id}`);
+          await load();
+        } catch (e: any) {
+          setError(explainNetworkHint(e));
+        }
+        return;
+      }
+      // 수량만 변경: 낙관적 업데이트로 재정렬 방지
       setItems((prev) =>
-        prev.map((x) =>
-          x.id === inv.id ? { ...x, quantity: Math.max(0, next) } : x,
-        ),
+        prev.map((x) => (x.id === inv.id ? { ...x, quantity: next } : x)),
       );
       try {
-        if (next <= 0) await api.delete(`/inventory/${inv.id}`);
-        else await api.patch(`/inventory/${inv.id}`, { quantity: next });
-        await load();
+        await api.patch(`/inventory/${inv.id}`, { quantity: next });
       } catch (e: any) {
         setError(explainNetworkHint(e));
-        await load();
+        await load(); // 에러 시에만 서버 상태로 복원
       }
     },
     [load],
@@ -426,26 +439,19 @@ export default function InventoryScreen() {
   const closeEdit = useCallback(() => {
     setIsEditOpen(false);
     setEditTarget(null);
+    setConfirmDelete(false);
   }, []);
 
   const deleteFromEdit = useCallback(async () => {
     if (!editTarget) return;
-    Alert.alert("삭제할까?", editTarget.itemName, [
-      { text: "취소", style: "cancel" },
-      {
-        text: "삭제",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await api.delete(`/inventory/${editTarget.id}`);
-            closeEdit();
-            await load();
-          } catch (e: any) {
-            setError(explainNetworkHint(e));
-          }
-        },
-      },
-    ]);
+    try {
+      await api.delete(`/inventory/${editTarget.id}`);
+      setConfirmDelete(false);
+      closeEdit();
+      await load();
+    } catch (e: any) {
+      setError(explainNetworkHint(e));
+    }
   }, [editTarget, closeEdit, load]);
 
   const pickAndScan = useCallback(async () => {
@@ -458,20 +464,22 @@ export default function InventoryScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       base64: true,
-      quality: 0.6,
+      quality: 0.8,
     });
-    if (result.canceled || !result.assets?.[0]) return;
+    if (result.canceled || !result.assets?.[0]) return; // 취소 시 기존 데이터 유지
 
     const asset = result.assets[0];
-    setScanLoading(true);
     setScanItems([]);
+    setScanLoading(true);
     try {
+      // 백엔드에서 Tesseract OCR → Gemini 텍스트 파싱 (이미지만 전송)
       const res = await api.post<{ itemName: string; quantity: number; unit: string }[]>(
         "/inventory/scan",
         {
           imageBase64: asset.base64,
           mimeType: asset.mimeType ?? "image/jpeg",
         },
+        { timeout: 60000 },
       );
       setScanItems(
         (res.data ?? []).map((x) => ({
@@ -481,8 +489,15 @@ export default function InventoryScreen() {
           storage: "FRIDGE" as const,
         })),
       );
+      if ((res.data ?? []).length === 0) {
+        setScanError("식재료를 찾지 못했어. 더 선명한 이미지를 사용해봐.");
+      }
     } catch (e: any) {
-      setScanError(explainNetworkHint(e));
+      const serverMsg =
+        e?.response?.data?.message ||
+        (typeof e?.response?.data === "string" ? e.response.data : null);
+      const status = e?.response?.status ? `[${e.response.status}] ` : "";
+      setScanError(serverMsg ? `${status}${serverMsg}` : explainNetworkHint(e));
     } finally {
       setScanLoading(false);
     }
@@ -581,12 +596,15 @@ export default function InventoryScreen() {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.toolbarIconText}>⊟</Text>
+            <Text style={styles.toolbarIconText}>🧪</Text>
           </Pressable>
           {activeFilterCount > 0 && <View style={styles.badgeDot} />}
         </View>
         <Pressable
-          onPress={() => { setIsScanOpen(true); pickAndScan(); }}
+          onPress={() => {
+            setIsScanOpen(true);
+            pickAndScan();
+          }}
           style={({ pressed }) => [
             styles.iconCircle,
             pressed && { opacity: 0.85 },
@@ -1015,35 +1033,51 @@ export default function InventoryScreen() {
               </View>
             </ScrollView>
             <View style={styles.modalFooter}>
-              <Pressable
-                onPress={deleteFromEdit}
-                style={({ pressed }) => [
-                  styles.btnDanger,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text style={styles.btnDangerText}>삭제</Text>
-              </Pressable>
-              <View style={{ flex: 1 }} />
-              <Pressable
-                onPress={closeEdit}
-                style={({ pressed }) => [
-                  styles.btnGhost,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text style={styles.btnGhostText}>취소</Text>
-              </Pressable>
-              <View style={{ width: 10 }} />
-              <Pressable
-                onPress={saveEdit}
-                style={({ pressed }) => [
-                  styles.btnPrimary,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text style={styles.btnPrimaryText}>저장</Text>
-              </Pressable>
+              {confirmDelete ? (
+                // 삭제 2단계 확인 UI
+                <>
+                  <Text style={{ fontSize: 13, color: THEME.danger, fontWeight: "800", flex: 1 }}>
+                    정말 삭제할까요?
+                  </Text>
+                  <Pressable
+                    onPress={() => setConfirmDelete(false)}
+                    style={({ pressed }) => [styles.btnGhost, pressed && { opacity: 0.9 }]}
+                  >
+                    <Text style={styles.btnGhostText}>아니오</Text>
+                  </Pressable>
+                  <View style={{ width: 8 }} />
+                  <Pressable
+                    onPress={deleteFromEdit}
+                    style={({ pressed }) => [styles.btnDanger, pressed && { opacity: 0.9 }]}
+                  >
+                    <Text style={styles.btnDangerText}>예, 삭제</Text>
+                  </Pressable>
+                </>
+              ) : (
+                // 기본 버튼
+                <>
+                  <Pressable
+                    onPress={() => setConfirmDelete(true)}
+                    style={({ pressed }) => [styles.btnDanger, pressed && { opacity: 0.9 }]}
+                  >
+                    <Text style={styles.btnDangerText}>삭제</Text>
+                  </Pressable>
+                  <View style={{ flex: 1 }} />
+                  <Pressable
+                    onPress={closeEdit}
+                    style={({ pressed }) => [styles.btnGhost, pressed && { opacity: 0.9 }]}
+                  >
+                    <Text style={styles.btnGhostText}>취소</Text>
+                  </Pressable>
+                  <View style={{ width: 10 }} />
+                  <Pressable
+                    onPress={saveEdit}
+                    style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.9 }]}
+                  >
+                    <Text style={styles.btnPrimaryText}>저장</Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -1054,26 +1088,38 @@ export default function InventoryScreen() {
         transparent
         visible={isScanOpen}
         animationType="fade"
-        onRequestClose={() => { setIsScanOpen(false); setScanItems([]); }}
+        onRequestClose={() => {
+          setIsScanOpen(false);
+          setScanItems([]);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>📷 영수증 / 주문내역 스캔</Text>
               <Pressable
-                onPress={() => { setIsScanOpen(false); setScanItems([]); setScanError(""); }}
+                onPress={() => {
+                  setIsScanOpen(false);
+                  setScanItems([]);
+                  setScanError("");
+                }}
                 style={styles.iconBtn}
               >
                 <Text style={{ fontSize: 18, color: THEME.muted }}>×</Text>
               </Pressable>
             </View>
 
-            <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              style={styles.modalScroll}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.modalBody}>
                 {scanLoading && (
                   <View style={styles.scanLoadingBox}>
                     <ActivityIndicator size="large" color={THEME.brand} />
-                    <Text style={styles.scanLoadingText}>AI가 재료를 분석 중이에요...</Text>
+                    <Text style={styles.scanLoadingText}>
+                      AI가 재료를 분석 중이에요...
+                    </Text>
                   </View>
                 )}
 
@@ -1086,10 +1132,16 @@ export default function InventoryScreen() {
                 {!scanLoading && scanItems.length === 0 && !scanError && (
                   <View style={styles.scanLoadingBox}>
                     <Text style={{ fontSize: 32 }}>🛒</Text>
-                    <Text style={styles.scanLoadingText}>이미지를 선택하면 재료를 자동으로 추출해요</Text>
+                    <Text style={styles.scanLoadingText}>
+                      이미지를 선택하면 재료를 자동으로 추출해요
+                    </Text>
                     <Pressable
                       onPress={pickAndScan}
-                      style={({ pressed }) => [styles.btnPrimary, { marginTop: 12 }, pressed && { opacity: 0.85 }]}
+                      style={({ pressed }) => [
+                        styles.btnPrimary,
+                        { marginTop: 12 },
+                        pressed && { opacity: 0.85 },
+                      ]}
                     >
                       <Text style={styles.btnPrimaryText}>이미지 선택</Text>
                     </Pressable>
@@ -1098,10 +1150,27 @@ export default function InventoryScreen() {
 
                 {scanItems.length > 0 && (
                   <>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <Text style={[styles.label, { color: THEME.text }]}>추출된 재료 ({scanItems.length}개) — 수정 가능</Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text style={[styles.label, { color: THEME.text }]}>
+                        추출된 재료 ({scanItems.length}개) — 수정 가능
+                      </Text>
                       <Pressable onPress={pickAndScan}>
-                        <Text style={{ fontSize: 11, color: THEME.brand, fontWeight: "800" }}>다시 선택</Text>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            color: THEME.brand,
+                            fontWeight: "800",
+                          }}
+                        >
+                          다시 선택
+                        </Text>
                       </Pressable>
                     </View>
 
@@ -1110,7 +1179,11 @@ export default function InventoryScreen() {
                         <TextInput
                           value={item.itemName}
                           onChangeText={(v) =>
-                            setScanItems((prev) => prev.map((x, i) => i === idx ? { ...x, itemName: v } : x))
+                            setScanItems((prev) =>
+                              prev.map((x, i) =>
+                                i === idx ? { ...x, itemName: v } : x,
+                              ),
+                            )
                           }
                           style={[styles.input, styles.scanItemName]}
                           placeholder="재료명"
@@ -1119,7 +1192,11 @@ export default function InventoryScreen() {
                         <TextInput
                           value={item.quantity}
                           onChangeText={(v) =>
-                            setScanItems((prev) => prev.map((x, i) => i === idx ? { ...x, quantity: v } : x))
+                            setScanItems((prev) =>
+                              prev.map((x, i) =>
+                                i === idx ? { ...x, quantity: v } : x,
+                              ),
+                            )
                           }
                           style={[styles.input, styles.scanItemQty]}
                           keyboardType="numeric"
@@ -1129,17 +1206,28 @@ export default function InventoryScreen() {
                         <TextInput
                           value={item.unit}
                           onChangeText={(v) =>
-                            setScanItems((prev) => prev.map((x, i) => i === idx ? { ...x, unit: v } : x))
+                            setScanItems((prev) =>
+                              prev.map((x, i) =>
+                                i === idx ? { ...x, unit: v } : x,
+                              ),
+                            )
                           }
                           style={[styles.input, styles.scanItemUnit]}
                           placeholder="단위"
                           placeholderTextColor="rgba(31,41,55,0.45)"
                         />
                         <Pressable
-                          onPress={() => setScanItems((prev) => prev.filter((_, i) => i !== idx))}
-                          style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}
+                          onPress={() =>
+                            setScanItems((prev) =>
+                              prev.filter((_, i) => i !== idx),
+                            )
+                          }
+                          style={({ pressed }) => [
+                            styles.scanDeleteBtn,
+                            pressed && { opacity: 0.5 },
+                          ]}
                         >
-                          <Text style={{ color: THEME.danger, fontWeight: "900", fontSize: 16 }}>×</Text>
+                          <Text style={styles.scanDeleteText}>×</Text>
                         </Pressable>
                       </View>
                     ))}
@@ -1151,17 +1239,29 @@ export default function InventoryScreen() {
             {scanItems.length > 0 && (
               <View style={styles.modalFooter}>
                 <Pressable
-                  onPress={() => { setIsScanOpen(false); setScanItems([]); setScanError(""); }}
-                  style={({ pressed }) => [styles.btnGhost, pressed && { opacity: 0.9 }]}
+                  onPress={() => {
+                    setIsScanOpen(false);
+                    setScanItems([]);
+                    setScanError("");
+                  }}
+                  style={({ pressed }) => [
+                    styles.btnGhost,
+                    pressed && { opacity: 0.9 },
+                  ]}
                 >
                   <Text style={styles.btnGhostText}>취소</Text>
                 </Pressable>
                 <View style={{ width: 10 }} />
                 <Pressable
                   onPress={confirmScan}
-                  style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.9 }]}
+                  style={({ pressed }) => [
+                    styles.btnPrimary,
+                    pressed && { opacity: 0.9 },
+                  ]}
                 >
-                  <Text style={styles.btnPrimaryText}>재고에 추가 ({scanItems.length})</Text>
+                  <Text style={styles.btnPrimaryText}>
+                    재고에 추가 ({scanItems.length})
+                  </Text>
                 </Pressable>
               </View>
             )}
@@ -1222,7 +1322,13 @@ const styles: any = {
     backgroundColor: "rgba(255,255,255,0.85)",
   },
   searchIconText: { color: THEME.muted, marginRight: 8, fontSize: 14 },
-  searchInput: { flex: 1, color: THEME.text, fontSize: 14, paddingVertical: 0 },
+  searchInput: {
+    flex: 1,
+    color: THEME.text,
+    fontSize: 14,
+    paddingVertical: 0,
+    outlineWidth: 0,
+  },
   clearBtn: {
     marginLeft: 8,
     width: 26,
@@ -1517,9 +1623,49 @@ const styles: any = {
     paddingVertical: 32,
     gap: 12,
   },
-  scanLoadingText: { fontSize: 13, color: THEME.muted, textAlign: "center", lineHeight: 20 },
-  scanItemRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-  scanItemName: { flex: 3, paddingVertical: 8 },
-  scanItemQty:  { flex: 1, paddingVertical: 8 },
-  scanItemUnit: { flex: 1, paddingVertical: 8 },
+  scanLoadingText: {
+    fontSize: 13,
+    color: THEME.muted,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  scanItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 6,
+  },
+  scanItemName: {
+    flex: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    fontSize: 13,
+    minWidth: 0,
+  },
+  scanItemQty: {
+    width: 56,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    fontSize: 13,
+    textAlign: "center" as const,
+  },
+  scanItemUnit: {
+    width: 48,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    fontSize: 13,
+    textAlign: "center" as const,
+  },
+  scanDeleteBtn: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanDeleteText: {
+    color: THEME.danger,
+    fontWeight: "900",
+    fontSize: 18,
+    lineHeight: 22,
+  },
 };
