@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS inventory (
     storage      VARCHAR(20)    NOT NULL,  -- FRIDGE / FREEZER / PANTRY
     purchased_at DATE,
     expires_at   DATE,
-    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, item_name)
 );
 
 -- 5) 특가/세일 정보

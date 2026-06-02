@@ -10,9 +10,36 @@ VALUES (1, 'mvp@local', 'noop')
 ON CONFLICT (email) DO NOTHING;
 
 -- -----------------------------------------------
--- 기존 테이블에 컬럼 추가 (이미 적용된 DB 대응)
+-- 기존 테이블에 컬럼/제약 추가 (이미 적용된 DB 대응)
 -- -----------------------------------------------
 ALTER TABLE recipe ADD COLUMN IF NOT EXISTS cuisine_type VARCHAR(20) NOT NULL DEFAULT 'KOREAN';
+
+-- inventory: 중복 행 수량 합산 후 제거 (UNIQUE 추가 전 전처리)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'inventory_user_item_unique'
+  ) THEN
+    -- 첫 번째 행에 수량 합산
+    UPDATE inventory i
+    SET quantity = sub.total_qty
+    FROM (
+      SELECT MIN(id) AS keep_id, user_id, item_name, SUM(quantity) AS total_qty
+      FROM inventory
+      GROUP BY user_id, item_name
+    ) sub
+    WHERE i.user_id = sub.user_id
+      AND i.item_name = sub.item_name
+      AND i.id = sub.keep_id;
+
+    -- 중복 행 삭제
+    DELETE FROM inventory
+    WHERE id NOT IN (
+      SELECT MIN(id) FROM inventory GROUP BY user_id, item_name
+    );
+
+    ALTER TABLE inventory ADD CONSTRAINT inventory_user_item_unique UNIQUE (user_id, item_name);
+  END IF;
+END $$;
 ALTER TABLE recipe ADD CONSTRAINT IF NOT EXISTS recipe_name_unique UNIQUE (name);
 
 -- -----------------------------------------------
