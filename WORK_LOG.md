@@ -1,7 +1,7 @@
 # Cibono 프로젝트 작업 로그
 
 > AI 대화 간 컨텍스트 공유용. 굵직한 작업 흐름만 기록.
-> 업데이트: 2026-06-08 (2차)
+> 업데이트: 2026-06-08 (3차)
 
 ---
 
@@ -51,8 +51,53 @@
 
 ---
 
+### 레시피 추천 — 공공 API 전환 (2026-06-08)
+
+#### 백엔드
+- **만개의레시피 크롤러 제거** (`RecipeCrawlerService.java` 삭제)
+- **식품의약품안전처 COOKRCP01 API 연결** (`FoodSafetyApiService.java` 신규)
+  - 재료명 키워드 검색 (`RCP_PARTS_DTLS`), 레시피명 상세 조회 (`RCP_NM`)
+  - 동시 접속 차단 문제 해결 → `CompletableFuture` 병렬 → `for` 순차 호출로 변경
+  - HTML/XML 응답(API 한도 초과 시) 감지 후 빈 결과 반환
+  - 상세 로그: 검색 재료, 건수, 레시피명 출력
+- **네이버 블로그 검색 API 연결** (`NaverBlogService.java` 신규)
+  - 검색 결과 DB 영구 저장 (TTL 없음, 공유 캐시)
+  - 역직렬화 실패(구버전 포맷) 시 자동 재수집
+  - Jsoup으로 블로그 OG 이미지 추출 (`og:image` → `twitter:image` 순)
+- **RecipeController** — 엔드포인트 추가
+  - `GET /recipes/crawl` → 식약처 상세 조회
+  - `GET /recipes/crawl-bulk` → 재료 복수 검색 (병합)
+  - `GET /recipes/search-by-ingredient` → 재료 단일 검색
+  - `GET /recipes/naver-blog` → 블로그 검색 (DB 캐시)
+- **RecipeDto** — `RecipeCard`에 `ingredients` 추가, `BlogItem`에 `imageUrl` 추가
+- **BlogSearchCache** 도메인/리포지토리/DB 테이블 추가
+
+#### 프론트
+- **recommend.tsx** — 공공 레시피 섹션 UI 전면 개편
+  - 재료별 개별 섹션: `임박재료 {재료명} 가 들어가는 레시피`
+  - 식약처 API 동시 접속 문제 해결 → 병렬 `forEach` → 순차 `for await`
+  - 가로 스크롤 `nestedScrollEnabled` 추가 (Android 제스처 충돌 해결)
+  - 레시피 카드에 기본 재료 최대 4개 표시
+- **recipe-detail.tsx** — 블로그 레시피 섹션 추가
+  - 블로그 OG 이미지 72×72 썸네일 표시
+  - `Linking.openURL(blog.link)` 으로 외부 브라우저 열기
+
+### DB 스키마 개편 — ingredient 테이블 분리 (2026-06-08)
+
+- **ingredient 테이블 신규 생성**: `id BIGSERIAL PK`, `name VARCHAR(200) UNIQUE (ingredient_name_uk)`
+- **recipe_ingredient 재구성**: `ingredient_name VARCHAR` 컬럼 → `ingredient_id BIGINT FK` 로 변경 (M:N 조인 테이블)
+- `sql/migrate_ingredient.sql` — 기존 DB 1회 수동 적용용 마이그레이션 스크립트
+- **Recipe.java** — `@ElementCollection(ingredient_name)` → `@ManyToMany via ingredient_id`
+  - `getIngredients()` 는 여전히 `List<String>` 반환 (내부 매핑) → RecipeService 수정 없음
+- **Ingredient.java** 신규 엔티티
+- **Flyway 비활성화** — `spring.flyway.enabled=false`, `spring.jpa.hibernate.ddl-auto=update`
+- **data.sql 전면 정리** — 3개 분산된 INSERT 문을 각각 1개로 통합, 재료명 중복 제거
+
+---
+
 ## 현재 진행 중
 
+- [ ] 식약처 API 배치 수집 or 레시피 데이터셋 대량 추가
 - [ ] 영수증 OCR 정확도 높이기 (Gemini API 프롬프트 튜닝)
 
 ---
@@ -70,6 +115,7 @@
 |------|------|
 | 프론트 | React Native (Expo), TypeScript |
 | 백엔드 | Spring Boot, Java |
-| DB | SQL (schema.sql / data.sql) |
+| DB | PostgreSQL, schema.sql / data.sql 수동 적용 |
 | OCR | Gemini API |
+| 외부 API | 식품의약품안전처 COOKRCP01, 네이버 블로그 검색 |
 | API 통신 | REST, Axios (`src/api/client.ts`) |
