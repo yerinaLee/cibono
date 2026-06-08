@@ -2,7 +2,7 @@
 -- schema.sql
 -- Cibono 전체 DB 스키마 정의
 -- 실행 순서:
---   app_user → store
+--   app_user → food_category → store
 --   → purchase / inventory / deal
 --   → price_alert → alert_event
 --   → recipe → recipe_ingredient
@@ -17,7 +17,13 @@ CREATE TABLE IF NOT EXISTS app_user (
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- 2) 마트/스토어
+-- 2) 식재료 카테고리 (inventory FK 때문에 inventory 앞에 정의)
+CREATE TABLE IF NOT EXISTS food_category (
+    id   SERIAL      PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE  -- 채소/과일, 육류/계란, 해산물, 우유/유제품, 밀키트, 기타
+);
+
+-- 3) 마트/스토어
 CREATE TABLE IF NOT EXISTS store (
     id     BIGSERIAL    PRIMARY KEY,
     name   VARCHAR(100) NOT NULL,
@@ -47,7 +53,10 @@ CREATE TABLE IF NOT EXISTS inventory (
     storage      VARCHAR(20)    NOT NULL,  -- FRIDGE / FREEZER / PANTRY
     purchased_at DATE,
     expires_at   DATE,
-    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+    created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+    category_id  INTEGER        REFERENCES food_category(id),
+    is_favorite  BOOLEAN        NOT NULL DEFAULT FALSE,
+    UNIQUE (user_id, item_name)
 );
 
 -- 5) 특가/세일 정보
@@ -93,16 +102,30 @@ CREATE TABLE IF NOT EXISTS recipe (
     cuisine_type VARCHAR(20)  NOT NULL DEFAULT 'KOREAN'  -- KOREAN / WESTERN / CHINESE / GLOBAL
 );
 
--- 9) 레시피 재료 (recipe 의 ingredients 컬렉션)
-CREATE TABLE IF NOT EXISTS recipe_ingredient (
-    recipe_id       BIGINT       NOT NULL REFERENCES recipe(id) ON DELETE CASCADE,
-    ingredient_name VARCHAR(200) NOT NULL,
-    UNIQUE (recipe_id, ingredient_name)
+-- 9) 재료 마스터
+CREATE TABLE IF NOT EXISTS ingredient (
+    id   BIGSERIAL    PRIMARY KEY,
+    name VARCHAR(200) NOT NULL UNIQUE
 );
 
--- 10) 품목별 기본 유통기한 규칙
+-- 10) 레시피-재료 조인 (recipe ↔ ingredient M:N)
+CREATE TABLE IF NOT EXISTS recipe_ingredient (
+    recipe_id     BIGINT NOT NULL REFERENCES recipe(id)     ON DELETE CASCADE,
+    ingredient_id BIGINT NOT NULL REFERENCES ingredient(id) ON DELETE CASCADE,
+    PRIMARY KEY (recipe_id, ingredient_id)
+);
+
+-- 11) 품목별 기본 유통기한 규칙
 CREATE TABLE IF NOT EXISTS item_shelf_life (
     id              BIGSERIAL    PRIMARY KEY,
     item_name       VARCHAR(200) NOT NULL UNIQUE,
     shelf_life_days INTEGER      NOT NULL  -- 단위: 일
+);
+
+-- 12) 네이버 블로그 검색 결과 영구 저장 (query = PK, 만료 없음)
+CREATE TABLE IF NOT EXISTS blog_search_cache (
+    query       VARCHAR(200) NOT NULL,
+    result_json TEXT         NOT NULL,
+    cached_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT blog_search_cache_pkey PRIMARY KEY (query)
 );

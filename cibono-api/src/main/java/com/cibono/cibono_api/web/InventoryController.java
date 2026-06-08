@@ -1,57 +1,80 @@
 package com.cibono.cibono_api.web;
 
 import com.cibono.cibono_api.common.UserContext;
+import com.cibono.cibono_api.domain.FoodCategory;
 import com.cibono.cibono_api.domain.Inventory;
+import com.cibono.cibono_api.repository.FoodCategoryRepository;
 import com.cibono.cibono_api.repository.InventoryRepository;
 import com.cibono.cibono_api.service.GeminiService;
 import com.cibono.cibono_api.service.GeminiService.ScannedItem;
 import com.cibono.cibono_api.service.InventoryService;
+import com.cibono.cibono_api.service.TesseractOcrService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 public class InventoryController {
+    private static final Logger log = LoggerFactory.getLogger(InventoryController.class);
     private final InventoryRepository inventoryRepository;
+    private final FoodCategoryRepository foodCategoryRepository;
     private final InventoryService inventoryService;
     private final GeminiService geminiService;
+    private final TesseractOcrService tesseractOcr;
 
     public InventoryController(InventoryRepository inventoryRepository,
+                               FoodCategoryRepository foodCategoryRepository,
                                InventoryService inventoryService,
-                               GeminiService geminiService) {
+                               GeminiService geminiService,
+                               TesseractOcrService tesseractOcr) {
         this.inventoryRepository = inventoryRepository;
+        this.foodCategoryRepository = foodCategoryRepository;
         this.inventoryService = inventoryService;
         this.geminiService = geminiService;
+        this.tesseractOcr = tesseractOcr;
     }
 
     public record ScanRequest(String imageBase64, String mimeType) {}
+    public record ScanTextRequest(String ocrText) {}
 
-    @PostMapping("/inventory/scan")
-    public List<ScannedItem> scan(@RequestBody ScanRequest req) {
-        return geminiService.scanReceipt(req.imageBase64(), req.mimeType());
+    public record InventoryResponse(
+        Long id, Long userId, String itemName,
+        BigDecimal quantity, String unit, String storage,
+        String purchasedAt, String expiresAt,
+        Integer categoryId, String categoryName,
+        boolean favorite
+    ) {}
+
+    // ── 카테고리 목록 ──────────────────────────────────────
+    @GetMapping("/food-categories")
+    public List<FoodCategory> categories() {
+        return foodCategoryRepository.findAll();
     }
 
-    @PostMapping("/inventory/bulk")
-    public List<Inventory> bulkAdd(@RequestBody List<Inventory> reqs) {
-        return reqs.stream().map(req -> {
-            Inventory inv = new Inventory();
-            inv.setUserId(UserContext.userId());
-            inv.setItemName(req.getItemName());
-            inv.setQuantity(req.getQuantity() == null ? BigDecimal.ONE : req.getQuantity());
-            inv.setUnit(req.getUnit());
-            inv.setStorage(req.getStorage() != null ? req.getStorage() : "FRIDGE");
-            inv.setPurchasedAt(req.getPurchasedAt());
-            inv.setExpiresAt(req.getExpiresAt());
-            return inventoryService.saveWithAutoExpiry(inv);
-        }).toList();
-    }
-
+    // ── 인벤토리 목록 ──────────────────────────────────────
     @GetMapping("/inventory")
-    public List<Inventory> list() {
-        return inventoryRepository.findByUserIdOrderByExpiresAtAsc(UserContext.userId());
+    public List<InventoryResponse> list() {
+        List<Inventory> items = inventoryRepository.findByUserIdOrderByExpiresAtAsc(UserContext.userId());
+        Map<Integer, String> catMap = foodCategoryRepository.findAll()
+            .stream().collect(Collectors.toMap(FoodCategory::getId, FoodCategory::getName));
+
+        return items.stream().map(inv -> new InventoryResponse(
+            inv.getId(), inv.getUserId(), inv.getItemName(),
+            inv.getQuantity(), inv.getUnit(), inv.getStorage(),
+            inv.getPurchasedAt() != null ? inv.getPurchasedAt().toString() : null,
+            inv.getExpiresAt() != null ? inv.getExpiresAt().toString() : null,
+            inv.getCategoryId(),
+            inv.getCategoryId() != null ? catMap.get(inv.getCategoryId()) : null,
+            Boolean.TRUE.equals(inv.getFavorite())
+        )).toList();
     }
 
+    // ── 인벤토리 추가 ──────────────────────────────────────
     @PostMapping("/inventory")
     public Inventory add(@RequestBody Inventory req) {
         Inventory inv = new Inventory();
@@ -59,29 +82,34 @@ public class InventoryController {
         inv.setItemName(req.getItemName());
         inv.setQuantity(req.getQuantity() == null ? BigDecimal.ONE : req.getQuantity());
         inv.setUnit(req.getUnit());
-        inv.setStorage(req.getStorage()); // FRIDGE/FREEZER/PANTRY
+        inv.setStorage(req.getStorage());
         inv.setPurchasedAt(req.getPurchasedAt());
         inv.setExpiresAt(req.getExpiresAt());
+        inv.setCategoryId(req.getCategoryId());
+        inv.setFavorite(req.isFavorite());
         return inventoryService.saveWithAutoExpiry(inv);
     }
 
+    // ── 인벤토리 수정 ──────────────────────────────────────
     @PatchMapping("/inventory/{id}")
-    public Inventory update(@PathVariable long id, @RequestBody Inventory req){
+    public Inventory update(@PathVariable long id, @RequestBody Inventory req) {
         Inventory inv = inventoryRepository.findById(id)
-                .orElseThrow(()-> new IllegalArgumentException("inventory not found"));
-
-        if(!inv.getUserId().equals(UserContext.userId())) throw  new IllegalArgumentException("forbidden");
+                .orElseThrow(() -> new IllegalArgumentException("inventory not found"));
+        if (!inv.getUserId().equals(UserContext.userId())) throw new IllegalArgumentException("forbidden");
 
         if (req.getItemName() != null) inv.setItemName(req.getItemName());
         if (req.getQuantity() != null) inv.setQuantity(req.getQuantity());
         if (req.getUnit() != null) inv.setUnit(req.getUnit());
         if (req.getStorage() != null) inv.setStorage(req.getStorage());
         if (req.getPurchasedAt() != null) inv.setPurchasedAt(req.getPurchasedAt());
-        inv.setExpiresAt(req.getExpiresAt()); // null 허용(사용자 삭제)
+        inv.setExpiresAt(req.getExpiresAt());
+        if (req.getCategoryId() != null) inv.setCategoryId(req.getCategoryId());
+        if (req.getFavorite() != null) inv.setFavorite(req.getFavorite());
 
         return inventoryRepository.save(inv);
     }
 
+    // ── 인벤토리 삭제 ──────────────────────────────────────
     @DeleteMapping("/inventory/{id}")
     public void delete(@PathVariable long id) {
         Inventory inv = inventoryRepository.findById(id)
@@ -90,5 +118,46 @@ public class InventoryController {
         inventoryRepository.delete(inv);
     }
 
+    // ── OCR 스캔 ──────────────────────────────────────────
+    @PostMapping("/inventory/scan")
+    public List<ScannedItem> scan(@RequestBody ScanRequest req) {
+        String ocrText = tesseractOcr.extractText(req.imageBase64(), req.mimeType());
+        List<ScannedItem> result = geminiService.parseReceiptText(ocrText);
+        log.info("=== Gemini 파싱 결과 ({}) ===\n{}", result.size(), result);
+        return result;
+    }
 
+    @PostMapping("/inventory/scan-text")
+    public List<ScannedItem> scanText(@RequestBody ScanTextRequest req) {
+        log.info("=== OCR 수신 텍스트 ===\n{}", req.ocrText());
+        List<ScannedItem> result = geminiService.parseReceiptText(req.ocrText());
+        log.info("=== Gemini 파싱 결과 ({}) ===\n{}", result.size(), result);
+        return result;
+    }
+
+    @PostMapping("/inventory/bulk")
+    public List<Inventory> bulkAdd(@RequestBody List<Inventory> reqs) {
+        Long userId = UserContext.userId();
+        return reqs.stream().map(req -> {
+            BigDecimal addQty = req.getQuantity() == null ? BigDecimal.ONE : req.getQuantity();
+            String normalizedName = req.getItemName() == null ? "" : req.getItemName().trim();
+            return inventoryRepository.findFirstByUserIdAndItemNameIgnoreCase(userId, normalizedName)
+                .map(existing -> {
+                    existing.setQuantity(existing.getQuantity().add(addQty));
+                    return inventoryRepository.save(existing);
+                })
+                .orElseGet(() -> {
+                    Inventory inv = new Inventory();
+                    inv.setUserId(userId);
+                    inv.setItemName(normalizedName);
+                    inv.setQuantity(addQty);
+                    inv.setUnit(req.getUnit());
+                    inv.setStorage(req.getStorage() != null ? req.getStorage() : "FRIDGE");
+                    inv.setPurchasedAt(req.getPurchasedAt());
+                    inv.setExpiresAt(req.getExpiresAt());
+                    inv.setCategoryId(req.getCategoryId());
+                    return inventoryService.saveWithAutoExpiry(inv);
+                });
+        }).toList();
+    }
 }
