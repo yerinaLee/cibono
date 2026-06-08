@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -105,6 +105,7 @@ export default function RecommendScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [ingredientGroups, setIngredientGroups] = useState<IngredientGroup[]>([]);
+  const cancelRef = useRef(false);
 
   const [q, setQ] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -115,21 +116,27 @@ export default function RecommendScreen() {
 
   // 식약처 API가 동일 키 동시 접속을 차단하므로 순차 호출
   const loadIngredientGroups = useCallback(async (targets: string[]) => {
+    cancelRef.current = false;
     const limited = targets.slice(0, 4);
     setIngredientGroups(limited.map((ing) => ({ ingredient: ing, cards: [], loading: true, error: false })));
 
     for (let idx = 0; idx < limited.length; idx++) {
+      if (cancelRef.current) break; // cleanup 이후 중단
       const ing = limited[idx];
       try {
         const res = await api.get<RecipeCard[]>("/recipes/search-by-ingredient", { params: { ingredient: ing } });
+        if (cancelRef.current) break;
         const cards = res.data ?? [];
         setIngredientGroups((prev) => {
+          if (idx >= prev.length) return prev;
           const next = [...prev];
           next[idx] = { ingredient: ing, cards, loading: false, error: cards.length === 0 };
           return next;
         });
       } catch {
+        if (cancelRef.current) break;
         setIngredientGroups((prev) => {
+          if (idx >= prev.length) return prev;
           const next = [...prev];
           next[idx] = { ingredient: ing, cards: [], loading: false, error: true };
           return next;
@@ -173,8 +180,10 @@ export default function RecommendScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
+      cancelRef.current = false;
       load();
       return () => {
+        cancelRef.current = true; // 진행 중인 비동기 루프 중단
         setQ("");
         setIngredientGroups([]);
       };
@@ -230,7 +239,7 @@ export default function RecommendScreen() {
     if (ingredientGroups.length === 0) return null;
     return (
       <View style={{ marginTop: 4 }}>
-        {ingredientGroups.map((group) => (
+        {ingredientGroups.filter(Boolean).map((group) => (
           <View key={group.ingredient} style={{ marginBottom: 4 }}>
             {/* 재료별 헤더 */}
             <View style={styles.sectionHead}>
