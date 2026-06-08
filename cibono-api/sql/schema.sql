@@ -2,7 +2,7 @@
 -- schema.sql
 -- Cibono 전체 DB 스키마 정의
 -- 실행 순서:
---   app_user → store
+--   app_user → food_category → store
 --   → purchase / inventory / deal
 --   → price_alert → alert_event
 --   → recipe → recipe_ingredient
@@ -17,7 +17,13 @@ CREATE TABLE IF NOT EXISTS app_user (
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- 2) 마트/스토어
+-- 2) 식재료 카테고리 (inventory FK 때문에 inventory 앞에 정의)
+CREATE TABLE IF NOT EXISTS food_category (
+    id   SERIAL      PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE  -- 채소/과일, 육류/계란, 해산물, 우유/유제품, 밀키트, 기타
+);
+
+-- 3) 마트/스토어
 CREATE TABLE IF NOT EXISTS store (
     id     BIGSERIAL    PRIMARY KEY,
     name   VARCHAR(100) NOT NULL,
@@ -48,6 +54,8 @@ CREATE TABLE IF NOT EXISTS inventory (
     purchased_at DATE,
     expires_at   DATE,
     created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+    category_id  INTEGER        REFERENCES food_category(id),
+    is_favorite  BOOLEAN        NOT NULL DEFAULT FALSE,
     UNIQUE (user_id, item_name)
 );
 

@@ -10,6 +10,26 @@ VALUES (1, 'mvp@local', 'noop')
 ON CONFLICT (email) DO NOTHING;
 
 -- -----------------------------------------------
+-- 식재료 카테고리 시드
+-- -----------------------------------------------
+INSERT INTO food_category (id, name) VALUES
+    (1, '채소/과일'),
+    (2, '육류/계란'),
+    (3, '해산물'),
+    (4, '우유/유제품'),
+    (5, '밀키트'),
+    (6, '기타')
+ON CONFLICT (name) DO NOTHING;
+
+SELECT setval('food_category_id_seq', (SELECT MAX(id) FROM food_category));
+
+-- -----------------------------------------------
+-- 기존 inventory 테이블 마이그레이션 (이미 적용된 DB 대응)
+-- -----------------------------------------------
+ALTER TABLE inventory ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES food_category(id);
+ALTER TABLE inventory ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- -----------------------------------------------
 -- 기존 테이블에 컬럼/제약 추가 (이미 적용된 DB 대응)
 -- -----------------------------------------------
 ALTER TABLE recipe ADD COLUMN IF NOT EXISTS cuisine_type VARCHAR(20) NOT NULL DEFAULT 'KOREAN';

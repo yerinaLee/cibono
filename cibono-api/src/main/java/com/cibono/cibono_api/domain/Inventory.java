@@ -36,6 +36,12 @@ public class Inventory {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Column(name = "category_id")
+    private Integer categoryId;
+
+    @Column(name = "is_favorite", nullable = false)
+    private Boolean favorite = false;
+
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
@@ -51,4 +57,9 @@ public class Inventory {
     public void setPurchasedAt(LocalDate purchasedAt) { this.purchasedAt = purchasedAt; }
     public LocalDate getExpiresAt() { return expiresAt; }
     public void setExpiresAt(LocalDate expiresAt) { this.expiresAt = expiresAt; }
+    public Integer getCategoryId() { return categoryId; }
+    public void setCategoryId(Integer categoryId) { this.categoryId = categoryId; }
+    public Boolean isFavorite() { return favorite != null && favorite; }
+    public Boolean getFavorite() { return favorite; }
+    public void setFavorite(Boolean favorite) { this.favorite = favorite; }
 }
