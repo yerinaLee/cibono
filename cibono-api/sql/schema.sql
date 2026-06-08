@@ -112,3 +112,11 @@ CREATE TABLE IF NOT EXISTS item_shelf_life (
     item_name       VARCHAR(200) NOT NULL UNIQUE,
     shelf_life_days INTEGER      NOT NULL  -- 단위: 일
 );
+
+-- 11) 네이버 블로그 검색 결과 영구 저장 (query = PK, 만료 없음)
+CREATE TABLE IF NOT EXISTS blog_search_cache (
+    query       VARCHAR(200) NOT NULL,
+    result_json TEXT         NOT NULL,
+    cached_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT blog_search_cache_pkey PRIMARY KEY (query)
+);
