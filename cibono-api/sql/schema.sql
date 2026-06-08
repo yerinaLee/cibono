@@ -99,21 +99,27 @@ CREATE TABLE IF NOT EXISTS recipe (
     cuisine_type VARCHAR(20)  NOT NULL DEFAULT 'KOREAN'  -- KOREAN / WESTERN / CHINESE / GLOBAL
 );
 
--- 9) 레시피 재료 (recipe 의 ingredients 컬렉션)
-CREATE TABLE IF NOT EXISTS recipe_ingredient (
-    recipe_id       BIGINT       NOT NULL REFERENCES recipe(id) ON DELETE CASCADE,
-    ingredient_name VARCHAR(200) NOT NULL,
-    UNIQUE (recipe_id, ingredient_name)
+-- 9) 재료 마스터
+CREATE TABLE IF NOT EXISTS ingredient (
+    id   BIGSERIAL    PRIMARY KEY,
+    name VARCHAR(200) NOT NULL UNIQUE
 );
 
--- 10) 품목별 기본 유통기한 규칙
+-- 10) 레시피-재료 조인 (recipe ↔ ingredient M:N)
+CREATE TABLE IF NOT EXISTS recipe_ingredient (
+    recipe_id     BIGINT NOT NULL REFERENCES recipe(id)     ON DELETE CASCADE,
+    ingredient_id BIGINT NOT NULL REFERENCES ingredient(id) ON DELETE CASCADE,
+    PRIMARY KEY (recipe_id, ingredient_id)
+);
+
+-- 11) 품목별 기본 유통기한 규칙
 CREATE TABLE IF NOT EXISTS item_shelf_life (
     id              BIGSERIAL    PRIMARY KEY,
     item_name       VARCHAR(200) NOT NULL UNIQUE,
     shelf_life_days INTEGER      NOT NULL  -- 단위: 일
 );
 
--- 11) 네이버 블로그 검색 결과 영구 저장 (query = PK, 만료 없음)
+-- 12) 네이버 블로그 검색 결과 영구 저장 (query = PK, 만료 없음)
 CREATE TABLE IF NOT EXISTS blog_search_cache (
     query       VARCHAR(200) NOT NULL,
     result_json TEXT         NOT NULL,

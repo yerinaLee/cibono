@@ -49,6 +49,7 @@ public class RecipeService {
                     missing++;
                 }
             }
+            // 레시피 임박점수 매김
             int score = urgencyScore + matched * 2 - missing * 3;
             suggestions.add(new RecipeSuggestion(r.getName(), r.getIngredients(), missing, score, r.getCookingTime(), r.getCuisineType()));
         }
