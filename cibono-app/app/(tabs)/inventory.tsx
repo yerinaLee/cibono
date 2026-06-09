@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useMemo, useState } from "react";
+import AppHeader from "../../components/AppHeader";
 import {
   ActivityIndicator,
   FlatList,
@@ -654,24 +655,20 @@ export default function InventoryScreen() {
 
   const Header = (
     <View style={{ paddingBottom: 8 }}>
-      {/* 타이틀 */}
-      <View style={styles.topbar}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.h2}>Inventory</Text>
-          <Text style={styles.sub}>냉장고 재고(유통기한) 관리</Text>
-        </View>
-        <Pressable
-          onPress={() => setIsAddOpen(true)}
-          style={({ pressed }) => [
-            styles.btnPrimary,
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <Text style={styles.btnPrimaryText}>재료 추가</Text>
-        </Pressable>
-      </View>
+      <AppHeader
+        title="Inventory"
+        subtitle="냉장고 재고(유통기한) 관리"
+        rightExtra={
+          <Pressable
+            onPress={() => setIsAddOpen(true)}
+            style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={styles.btnPrimaryText}>재료 추가</Text>
+          </Pressable>
+        }
+      />
 
-      {/* 툴바 */}
+      {/* 검색·필터·스캔 툴바 — 헤더 아래 별도 라인 */}
       <View style={styles.toolbar}>
         <Pressable
           onPress={() => setShowSearch((p) => !p)}
@@ -697,14 +694,8 @@ export default function InventoryScreen() {
           {activeFilterCount > 0 && <View style={styles.badgeDot} />}
         </View>
         <Pressable
-          onPress={() => {
-            setIsScanOpen(true);
-            pickAndScan();
-          }}
-          style={({ pressed }) => [
-            styles.iconCircle,
-            pressed && { opacity: 0.85 },
-          ]}
+          onPress={() => { setIsScanOpen(true); pickAndScan(); }}
+          style={({ pressed }) => [styles.iconCircle, pressed && { opacity: 0.85 }]}
         >
           <Text style={styles.toolbarIconText}>📷</Text>
         </Pressable>

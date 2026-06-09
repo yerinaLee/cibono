@@ -51,7 +51,7 @@ public class RecipeService {
             }
             // 레시피 임박점수 매김
             int score = urgencyScore + matched * 2 - missing * 3;
-            suggestions.add(new RecipeSuggestion(r.getName(), r.getIngredients(), missing, score, r.getCookingTime(), r.getCuisineType()));
+            suggestions.add(new RecipeSuggestion(r.getName(), r.getImageUrl(), r.getIngredients(), missing, score, r.getCookingTime(), r.getCuisineType()));
         }
 
         return suggestions.stream()
@@ -82,5 +82,5 @@ public class RecipeService {
                 .max().orElse(0);
     }
 
-    public record RecipeSuggestion(String name, List<String> ingredients, int missingCount, int score, int cookingTime, String cuisineType) {}
+    public record RecipeSuggestion(String name, String imageUrl, List<String> ingredients, int missingCount, int score, int cookingTime, String cuisineType) {}
 }

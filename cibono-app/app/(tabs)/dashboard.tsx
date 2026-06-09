@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
+import AppHeader from "../../components/AppHeader";
 import {
     Modal,
     Platform,
@@ -177,23 +178,18 @@ export default function DashboardScreen() {
         }
         contentContainerStyle={{ padding: 14, paddingBottom: 28 }}
       >
-        {/* Topbar */}
-        <View style={styles.topbar}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.h2}>Dashboard</Text>
-            <Text style={styles.sub}>오늘의 재고/특가/추천 요약</Text>
-          </View>
-
-          <Pressable
-            onPress={() => setIsAddOpen(true)}
-            style={({ pressed }) => [
-              styles.btnPrimary,
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <Text style={styles.btnPrimaryText}>빠른 추가</Text>
-          </Pressable>
-        </View>
+        <AppHeader
+          title="Dashboard"
+          subtitle="오늘의 재고/특가/추천 요약"
+          rightExtra={
+            <Pressable
+              onPress={() => setIsAddOpen(true)}
+              style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.9 }]}
+            >
+              <Text style={styles.btnPrimaryText}>빠른 추가</Text>
+            </Pressable>
+          }
+        />
 
         {/* Search (UI example) */}
         <View style={styles.searchBox}>
@@ -257,11 +253,33 @@ export default function DashboardScreen() {
               </View>
             </View>
             <Text style={styles.kpi}>{urgentCount}</Text>
-            <Text style={styles.desc}>
-              {urgentPreview.length
-                ? urgentPreview.map((x) => `${x.itemName}(D-${x.d})`).join(", ")
-                : "임박 재료가 없어"}
-            </Text>
+
+            {/* 임박 재료 아이콘 칩 — 클릭 시 해당 재료 레시피로 이동 */}
+            {urgentPreview.length > 0 ? (
+              <View style={styles.chipRow}>
+                {urgentPreview.map((x) => (
+                  <Pressable
+                    key={x.id}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/ingredient-recipes",
+                        params: { ingredient: x.itemName },
+                      })
+                    }
+                    style={({ pressed }) => [styles.urgentChip, pressed && { opacity: 0.75 }]}
+                  >
+                    <Text style={styles.urgentChipIcon}>🥬</Text>
+                    <View>
+                      <Text style={styles.urgentChipName}>{x.itemName}</Text>
+                      <Text style={styles.urgentChipDday}>D-{x.d}</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.desc}>임박 재료가 없어</Text>
+            )}
+
             <View style={{ height: 10 }} />
             <Pressable
               onPress={() => router.push("/(tabs)/inventory")}
@@ -596,6 +614,27 @@ const styles: any = {
 
   badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   badgeText: { fontSize: 12, fontWeight: "900" },
+
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  urgentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: "rgba(242,201,76,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(242,201,76,0.35)",
+  },
+  urgentChipIcon: { fontSize: 16 },
+  urgentChipName: { fontSize: 12, fontWeight: "900", color: THEME.text },
+  urgentChipDday: { fontSize: 11, color: "#B7791F", fontWeight: "700" },
 
   actionsRow: {
     marginTop: 12,

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { api } from "../src/api/client";
 
+
 type RecipeDetail = {
   title: string;
   description: string;
@@ -56,6 +57,34 @@ export default function RecipeDetailScreen() {
 
   const [blogs, setBlogs] = useState<BlogItem[]>([]);
   const [blogsLoading, setBlogsLoading] = useState(false);
+
+  // 쇼핑리스트 재료 선택
+  const [selectedIngs, setSelectedIngs] = useState<Set<string>>(new Set());
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartSuccess, setCartSuccess] = useState(false);
+
+  function toggleIng(ing: string) {
+    setSelectedIngs((prev) => {
+      const next = new Set(prev);
+      if (next.has(ing)) next.delete(ing);
+      else next.add(ing);
+      return next;
+    });
+  }
+
+  async function addToShoppingList() {
+    if (selectedIngs.size === 0) return;
+    setAddingToCart(true);
+    try {
+      await api.post("/shopping-list/bulk",
+        Array.from(selectedIngs).map((itemName) => ({ itemName }))
+      );
+      setSelectedIngs(new Set());
+      setCartSuccess(true);
+      setTimeout(() => setCartSuccess(false), 2000);
+    } catch {}
+    finally { setAddingToCart(false); }
+  }
 
   const fetchDetail = () => {
     if (!name) return;
@@ -119,7 +148,7 @@ export default function RecipeDetailScreen() {
       ) : null}
 
       {!loading && detail && (
-        <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: selectedIngs.size > 0 ? 100 : 60 }}>
           {/* 썸네일 */}
           {!!detail.imageUrl && (
             <Image
@@ -138,16 +167,33 @@ export default function RecipeDetailScreen() {
               )}
             </View>
 
-            {/* 재료 */}
+            {/* 재료 — 탭하면 선택, 쇼핑리스트에 추가 가능 */}
             {detail.ingredients.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>재료</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <Text style={styles.sectionTitle}>재료</Text>
+                  <Text style={styles.sectionHint}>탭하면 쇼핑리스트에 담을 수 있어</Text>
+                </View>
                 <View style={styles.ingredientGrid}>
-                  {detail.ingredients.map((ing, i) => (
-                    <View key={i} style={styles.ingredientChip}>
-                      <Text style={styles.ingredientText}>{ing}</Text>
-                    </View>
-                  ))}
+                  {detail.ingredients.map((ing, i) => {
+                    const selected = selectedIngs.has(ing);
+                    return (
+                      <Pressable
+                        key={i}
+                        onPress={() => toggleIng(ing)}
+                        style={({ pressed }) => [
+                          styles.ingredientChip,
+                          selected && styles.ingredientChipSelected,
+                          pressed && { opacity: 0.8 },
+                        ]}
+                      >
+                        {selected && <Text style={styles.checkMark}>✓ </Text>}
+                        <Text style={[styles.ingredientText, selected && styles.ingredientTextSelected]}>
+                          {ing}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </View>
             )}
@@ -211,6 +257,25 @@ export default function RecipeDetailScreen() {
             )}
           </View>
         </ScrollView>
+      )}
+
+      {/* 쇼핑리스트 담기 플로팅 버튼 */}
+      {selectedIngs.size > 0 && (
+        <View style={styles.floatingBar}>
+          <Pressable
+            onPress={addToShoppingList}
+            disabled={addingToCart}
+            style={({ pressed }) => [styles.floatingBtn, pressed && { opacity: 0.9 }]}
+          >
+            <Text style={styles.floatingBtnText}>
+              {cartSuccess
+                ? "✓ 담겼어!"
+                : addingToCart
+                ? "추가 중..."
+                : `🛒 ${selectedIngs.size}개 쇼핑리스트에 담기`}
+            </Text>
+          </Pressable>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -289,7 +354,10 @@ const styles: any = {
     flexWrap: "wrap",
     gap: 8,
   },
+  sectionHint: { fontSize: 11, color: THEME.muted },
   ingredientChip: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
@@ -297,7 +365,34 @@ const styles: any = {
     borderWidth: 1,
     borderColor: "rgba(127,183,126,0.30)",
   },
+  ingredientChipSelected: {
+    backgroundColor: "rgba(127,183,126,0.40)",
+    borderColor: "rgba(127,183,126,0.70)",
+  },
+  checkMark: { fontSize: 12, fontWeight: "900", color: THEME.brandInk },
   ingredientText: { fontSize: 13, fontWeight: "700", color: THEME.brandInk },
+  ingredientTextSelected: { fontWeight: "900" },
+
+  floatingBar: {
+    position: "absolute",
+    bottom: 20,
+    left: 16,
+    right: 16,
+  },
+  floatingBtn: {
+    backgroundColor: THEME.brand,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(15,31,22,0.12)",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  floatingBtnText: { fontSize: 15, fontWeight: "900", color: THEME.brandInk },
 
   stepRow: {
     flexDirection: "row",
