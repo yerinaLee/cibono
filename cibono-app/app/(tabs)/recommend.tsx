@@ -1,6 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
+import AppHeader from "../../components/AppHeader";
 import {
   ActivityIndicator,
   FlatList,
@@ -19,6 +20,7 @@ type CuisineType = "ALL" | "KOREAN" | "WESTERN" | "CHINESE" | "GLOBAL";
 
 type Suggestion = {
   name: string;
+  imageUrl?: string;
   ingredients: string[];
   missingCount: number;
   score: number;
@@ -216,7 +218,7 @@ export default function RecommendScreen() {
       arr = arr.filter((x) => x.name.toLowerCase().includes(keyword));
 
     const maxMin = timePreset === "60+" ? Infinity : parseInt(timePreset, 10);
-    arr = arr.filter((x) => snapToPreset(x.cookingTime ?? 0) <= maxMin);
+    arr = arr.filter((x) => (x.cookingTime ?? 0) <= maxMin);
 
     if (cuisineFilter !== "ALL")
       arr = arr.filter((x) => x.cuisineType === cuisineFilter);
@@ -308,18 +310,12 @@ export default function RecommendScreen() {
 
   const Header = (
     <View style={{ paddingBottom: 8 }}>
-      {/* 타이틀 */}
-      <View style={styles.topbar}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.h2}>Recommend</Text>
-          <Text style={styles.sub}>임박 재료 우선 요리 추천</Text>
-        </View>
-        <View style={styles.badgeChip}>
-          <Text style={styles.badgeChipText}>오늘</Text>
-        </View>
-      </View>
+      <AppHeader
+        title="Recommend"
+        subtitle="임박 재료 우선 요리 추천"
+      />
 
-      {/* 툴바 */}
+      {/* 검색·필터 툴바 — 헤더 아래 별도 라인 */}
       <View style={styles.toolbar}>
         <Pressable
           onPress={() => setShowSearch((p) => !p)}
@@ -344,6 +340,14 @@ export default function RecommendScreen() {
           </Pressable>
           {activeFilterCount > 0 && <View style={styles.badgeDot} />}
         </View>
+        {activeFilterCount > 0 && (
+          <Pressable
+            onPress={() => { setTimePreset("30"); setCuisineFilter("ALL"); }}
+            style={({ pressed }) => [styles.iconCircle, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={{ fontSize: 11, fontWeight: "900", color: "#B42318" }}>초기화</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* 인라인 검색창 */}
@@ -463,43 +467,47 @@ export default function RecommendScreen() {
           const cl = CUISINE_LABELS[item.cuisineType as CuisineType] ?? item.cuisineType;
 
           return (
-            <View style={[styles.card, { flex: 1 }]}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.cardTitle} numberOfLines={2}>
-                  {item.name}
+            <Pressable
+              onPress={() => router.push({ pathname: "/recipe-detail", params: { name: item.name } })}
+              style={({ pressed }) => [styles.card, { flex: 1 }, pressed && { opacity: 0.88 }]}
+            >
+              {!!item.imageUrl && (
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  style={styles.cardThumb}
+                  resizeMode="cover"
+                />
+              )}
+              <View style={{ padding: 10, flex: 1 }}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.cardTitle} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                  <View style={[styles.badge, { backgroundColor: headlineBadge.bg }]}>
+                    <Text style={[styles.badgeText, { color: headlineBadge.color }]}>
+                      {headlineBadge.label}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.desc} numberOfLines={3}>
+                  {(item.ingredients ?? []).join(" · ")}
                 </Text>
-                <View style={[styles.badge, { backgroundColor: headlineBadge.bg }]}>
-                  <Text style={[styles.badgeText, { color: headlineBadge.color }]}>
-                    {headlineBadge.label}
-                  </Text>
+
+                <View style={{ flex: 1 }} />
+
+                <View style={styles.footerRow}>
+                  <View style={[styles.badge, { backgroundColor: cc.bg }]}>
+                    <Text style={[styles.badgeText, { color: cc.color }]}>{cl}</Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: "rgba(127,183,126,0.18)" }]}>
+                    <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
+                      {item.cookingTime}분
+                    </Text>
+                  </View>
                 </View>
               </View>
-
-              <Text style={styles.desc} numberOfLines={3}>
-                {(item.ingredients ?? []).join(" · ")}
-              </Text>
-
-              <View style={{ flex: 1 }} />
-
-              <View style={styles.footerRow}>
-                <View style={[styles.badge, { backgroundColor: cc.bg }]}>
-                  <Text style={[styles.badgeText, { color: cc.color }]}>{cl}</Text>
-                </View>
-
-                <View style={[styles.badge, { backgroundColor: "rgba(127,183,126,0.18)" }]}>
-                  <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
-                    {item.cookingTime}분
-                  </Text>
-                </View>
-
-                <Pressable
-                  onPress={() => router.push({ pathname: "/recipe-detail", params: { name: item.name } })}
-                  style={({ pressed }) => [styles.btn, pressed && { opacity: 0.9 }]}
-                >
-                  <Text style={styles.btnText}>보기</Text>
-                </Pressable>
-              </View>
-            </View>
+            </Pressable>
           );
         }}
         ListEmptyComponent={
@@ -667,13 +675,18 @@ const styles: any = {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME.border,
-    padding: 14,
     marginBottom: 12,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 2,
+  },
+  cardThumb: {
+    width: "100%",
+    height: 100,
+    backgroundColor: "rgba(127,183,126,0.12)",
   },
   rowBetween: {
     flexDirection: "row",

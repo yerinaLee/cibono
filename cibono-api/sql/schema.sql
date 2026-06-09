@@ -96,7 +96,8 @@ CREATE TABLE IF NOT EXISTS recipe (
     id           BIGSERIAL    PRIMARY KEY,
     name         VARCHAR(200) NOT NULL UNIQUE,
     cooking_time INTEGER      NOT NULL DEFAULT 30,  -- 단위: 분
-    cuisine_type VARCHAR(20)  NOT NULL DEFAULT 'KOREAN'  -- KOREAN / WESTERN / CHINESE / GLOBAL
+    cuisine_type VARCHAR(20)  NOT NULL DEFAULT 'KOREAN',  -- KOREAN / WESTERN / CHINESE / GLOBAL
+    image_url    VARCHAR(500)
 );
 
 -- 9) 재료 마스터
@@ -119,7 +120,18 @@ CREATE TABLE IF NOT EXISTS item_shelf_life (
     shelf_life_days INTEGER      NOT NULL  -- 단위: 일
 );
 
--- 12) 네이버 블로그 검색 결과 영구 저장 (query = PK, 만료 없음)
+-- 12) 쇼핑리스트 (레시피 재료 메모)
+CREATE TABLE IF NOT EXISTS shopping_list (
+    id         BIGSERIAL      PRIMARY KEY,
+    user_id    BIGINT         NOT NULL REFERENCES app_user(id),
+    item_name  VARCHAR(200)   NOT NULL,
+    quantity   NUMERIC(10, 2),
+    unit       VARCHAR(20),
+    checked    BOOLEAN        NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+);
+
+-- 13) 네이버 블로그 검색 결과 영구 저장 (query = PK, 만료 없음)
 CREATE TABLE IF NOT EXISTS blog_search_cache (
     query       VARCHAR(200) NOT NULL,
     result_json TEXT         NOT NULL,

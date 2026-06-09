@@ -21,6 +21,9 @@ public class Recipe {
     @Column(name = "cuisine_type", nullable = false, length = 20)
     private String cuisineType;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "recipe_ingredient",
@@ -33,6 +36,7 @@ public class Recipe {
     public String getName() { return name; }
     public int getCookingTime() { return cookingTime; }
     public String getCuisineType() { return cuisineType; }
+    public String getImageUrl() { return imageUrl; }
     public List<String> getIngredients() {
         return ingredientEntities.stream().map(Ingredient::getName).toList();
     }
