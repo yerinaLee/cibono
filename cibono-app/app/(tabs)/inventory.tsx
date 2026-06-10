@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useMemo, useState } from "react";
 import AppHeader from "../../components/AppHeader";
@@ -9,12 +9,12 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type Inventory = {
@@ -668,7 +668,7 @@ export default function InventoryScreen() {
         }
       />
 
-      {/* 검색·필터·스캔 툴바 — 헤더 아래 별도 라인 */}
+      {/* 검색·필터·스캔 툴바 */}
       <View style={styles.toolbar}>
         <Pressable
           onPress={() => setShowSearch((p) => !p)}
@@ -678,7 +678,7 @@ export default function InventoryScreen() {
             pressed && { opacity: 0.85 },
           ]}
         >
-          <Text style={styles.toolbarIconText}>🔍</Text>
+          <MaterialIcons name="search" size={20} color={showSearch ? THEME.brand : THEME.text} />
         </Pressable>
         <View>
           <Pressable
@@ -689,7 +689,7 @@ export default function InventoryScreen() {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.toolbarIconText}>🧪</Text>
+            <MaterialIcons name="tune" size={20} color={filterOpen ? THEME.brand : THEME.text} />
           </Pressable>
           {activeFilterCount > 0 && <View style={styles.badgeDot} />}
         </View>
@@ -697,9 +697,33 @@ export default function InventoryScreen() {
           onPress={() => { setIsScanOpen(true); pickAndScan(); }}
           style={({ pressed }) => [styles.iconCircle, pressed && { opacity: 0.85 }]}
         >
-          <Text style={styles.toolbarIconText}>📷</Text>
+          <MaterialIcons name="photo-camera" size={20} color={THEME.text} />
         </Pressable>
       </View>
+
+      {/* 카테고리 필터 — 항상 노출 (가로 스크롤) */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryRow}
+        style={{ marginTop: 8 }}
+      >
+        {CATEGORY_FILTERS.map((k) => (
+          <Pressable
+            key={k}
+            onPress={() => setCategoryFilter(k)}
+            style={({ pressed }) => [
+              styles.categoryChip,
+              categoryFilter === k && styles.categoryChipActive,
+              pressed && { opacity: 0.9 },
+            ]}
+          >
+            <Text style={[styles.categoryChipText, categoryFilter === k && styles.categoryChipTextActive]}>
+              {k === "ALL" ? "전체" : `${categoryIcon(k)} ${k}`}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
 
       {/* 인라인 검색창 */}
       {showSearch && (
@@ -772,29 +796,6 @@ export default function InventoryScreen() {
               </Pressable>
             ))}
           </View>
-          <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>분류</Text>
-            {CATEGORY_FILTERS.map((k) => (
-              <Pressable
-                key={k}
-                onPress={() => setCategoryFilter(k)}
-                style={({ pressed }) => [
-                  styles.filterChip,
-                  categoryFilter === k && styles.filterChipActive,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    categoryFilter === k && styles.filterChipTextActive,
-                  ]}
-                >
-                  {k === "ALL" ? "전체" : `${categoryIcon(k)} ${k}`}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
         </View>
       )}
 
@@ -828,7 +829,7 @@ export default function InventoryScreen() {
             hitSlop={10}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, paddingLeft: 10 }]}
           >
-            <Ionicons name="close" size={18} color="#92400E" />
+            <MaterialIcons name="close" size={18} color="#92400E" />
           </Pressable>
         </View>
       )}
@@ -836,7 +837,7 @@ export default function InventoryScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }} edges={["bottom", "left", "right"]}>
       <FlatList
         data={filtered}
         keyExtractor={(x) => String(x.id)}
@@ -855,12 +856,23 @@ export default function InventoryScreen() {
           const u = urgencyInfo(d);
           const label = ddayLabel(d);
 
+          const borderLeftColor =
+            d === null ? THEME.border :
+            d < 0 ? THEME.danger :
+            d <= 2 ? "#F2C94C" :
+            THEME.border;
+
           return (
             <Pressable
               onPress={() => openEdit(item)}
+              onLongPress={() => {
+                setEditTarget(item);
+                setConfirmDelete(true);
+              }}
+              delayLongPress={500}
               style={({ pressed }) => [
                 styles.card,
-                { backgroundColor: u.cardBg, opacity: pressed ? 0.85 : 1 },
+                { borderLeftWidth: 3, borderLeftColor, opacity: pressed ? 0.85 : 1 },
               ]}
             >
               {/* 카테고리 아이콘 */}
@@ -895,8 +907,8 @@ export default function InventoryScreen() {
                     hitSlop={8}
                     style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
                   >
-                    <Ionicons
-                      name={item.favorite ? "star" : "star-outline"}
+                    <MaterialIcons
+                      name={item.favorite ? "star" : "star-border"}
                       size={17}
                       color={item.favorite ? THEME.warn : THEME.muted}
                     />
@@ -1244,6 +1256,45 @@ export default function InventoryScreen() {
         </View>
       </Modal>
 
+      {/* ── Long-press 삭제 확인 (수정 모달 미열 때) ── */}
+      <Modal
+        transparent
+        visible={confirmDelete && !isEditOpen}
+        animationType="fade"
+        onRequestClose={() => { setConfirmDelete(false); setEditTarget(null); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modal, { maxHeight: undefined }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>재료 삭제</Text>
+              <Pressable onPress={() => { setConfirmDelete(false); setEditTarget(null); }} style={styles.iconBtn}>
+                <MaterialIcons name="close" size={18} color={THEME.muted} />
+              </Pressable>
+            </View>
+            <View style={[styles.modalBody, { paddingVertical: 20 }]}>
+              <Text style={{ fontSize: 15, color: THEME.text, textAlign: "center" }}>
+                <Text style={{ fontWeight: "900" }}>{editTarget?.itemName}</Text>을(를) 삭제할까요?
+              </Text>
+            </View>
+            <View style={styles.modalFooter}>
+              <Pressable
+                onPress={() => { setConfirmDelete(false); setEditTarget(null); }}
+                style={({ pressed }) => [styles.btnGhost, pressed && { opacity: 0.9 }]}
+              >
+                <Text style={styles.btnGhostText}>취소</Text>
+              </Pressable>
+              <View style={{ width: 10 }} />
+              <Pressable
+                onPress={deleteFromEdit}
+                style={({ pressed }) => [styles.btnDanger, pressed && { opacity: 0.9 }]}
+              >
+                <Text style={styles.btnDangerText}>삭제</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Scan 모달 ── */}
       <Modal
         transparent
@@ -1560,6 +1611,27 @@ const styles: any = {
   },
   errorText: { color: "#B42318", fontSize: 12, fontWeight: "700" },
 
+  // 카테고리 항상 노출 행
+  categoryRow: {
+    flexDirection: "row",
+    gap: 6,
+    paddingBottom: 4,
+  },
+  categoryChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "#FFFFFF",
+  },
+  categoryChipActive: {
+    borderColor: "rgba(127,183,126,0.5)",
+    backgroundColor: "rgba(127,183,126,0.18)",
+  },
+  categoryChipText: { fontSize: 12, fontWeight: "800", color: THEME.muted },
+  categoryChipTextActive: { color: THEME.brandInk },
+
   // ── 리스트 카드 ──
   card: {
     flexDirection: "row",
@@ -1567,12 +1639,14 @@ const styles: any = {
     borderRadius: 14,
     borderWidth: 1,
     borderColor: THEME.border,
+    backgroundColor: "#FFFFFF",
     padding: 12,
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
+    overflow: "hidden",
   },
   catIconWrap: {
     width: 44,

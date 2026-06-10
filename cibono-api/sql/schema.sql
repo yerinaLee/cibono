@@ -138,3 +138,16 @@ CREATE TABLE IF NOT EXISTS blog_search_cache (
     cached_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
     CONSTRAINT blog_search_cache_pkey PRIMARY KEY (query)
 );
+
+-- 14) 저장된 레시피 (북마크)
+CREATE TABLE IF NOT EXISTS saved_recipe (
+    id          BIGSERIAL    PRIMARY KEY,
+    user_id     BIGINT       NOT NULL REFERENCES app_user(id),
+    recipe_name VARCHAR(200) NOT NULL,
+    image_url   VARCHAR(500),
+    source_type VARCHAR(20)  NOT NULL DEFAULT 'FOOD_SAFETY',  -- FOOD_SAFETY / BLOG
+    source_url  VARCHAR(500),
+    ingredients TEXT,        -- 쉼표 구분 재료 목록
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, recipe_name)
+);

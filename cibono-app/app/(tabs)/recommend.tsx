@@ -1,19 +1,20 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import AppHeader from "../../components/AppHeader";
 import {
   ActivityIndicator,
   FlatList,
   Image,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type CuisineType = "ALL" | "KOREAN" | "WESTERN" | "CHINESE" | "GLOBAL";
@@ -51,10 +52,10 @@ const CUISINE_LABELS: Record<CuisineType, string> = {
 };
 
 const CUISINE_COLORS: Record<string, { color: string; bg: string }> = {
-  KOREAN:  { color: "#7C3D12", bg: "rgba(251,191,36,0.18)"  },
-  WESTERN: { color: "#1E40AF", bg: "rgba(96,165,250,0.18)"  },
+  KOREAN: { color: "#7C3D12", bg: "rgba(251,191,36,0.18)" },
+  WESTERN: { color: "#1E40AF", bg: "rgba(96,165,250,0.18)" },
   CHINESE: { color: "#991B1B", bg: "rgba(252,165,165,0.20)" },
-  GLOBAL:  { color: "#065F46", bg: "rgba(52,211,153,0.18)"  },
+  GLOBAL: { color: "#065F46", bg: "rgba(52,211,153,0.18)" },
 };
 
 type Inventory = {
@@ -106,13 +107,17 @@ export default function RecommendScreen() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  const [ingredientGroups, setIngredientGroups] = useState<IngredientGroup[]>([]);
+  const [ingredientGroups, setIngredientGroups] = useState<IngredientGroup[]>(
+    [],
+  );
   const cancelRef = useRef(false);
 
   const [q, setQ] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [timePreset, setTimePreset] = useState<"15" | "30" | "45" | "60+">("30");
+  const [timePreset, setTimePreset] = useState<"15" | "30" | "45" | "60+">(
+    "30",
+  );
   const [cuisineFilter, setCuisineFilter] = useState<CuisineType>("ALL");
   // const [noSpicy, setNoSpicy] = useState(true); // noSpicy 미구현 — 주석 처리
 
@@ -120,19 +125,34 @@ export default function RecommendScreen() {
   const loadIngredientGroups = useCallback(async (targets: string[]) => {
     cancelRef.current = false;
     const limited = targets.slice(0, 4);
-    setIngredientGroups(limited.map((ing) => ({ ingredient: ing, cards: [], loading: true, error: false })));
+    setIngredientGroups(
+      limited.map((ing) => ({
+        ingredient: ing,
+        cards: [],
+        loading: true,
+        error: false,
+      })),
+    );
 
     for (let idx = 0; idx < limited.length; idx++) {
       if (cancelRef.current) break; // cleanup 이후 중단
       const ing = limited[idx];
       try {
-        const res = await api.get<RecipeCard[]>("/recipes/search-by-ingredient", { params: { ingredient: ing } });
+        const res = await api.get<RecipeCard[]>(
+          "/recipes/search-by-ingredient",
+          { params: { ingredient: ing } },
+        );
         if (cancelRef.current) break;
         const cards = res.data ?? [];
         setIngredientGroups((prev) => {
           if (idx >= prev.length) return prev;
           const next = [...prev];
-          next[idx] = { ingredient: ing, cards, loading: false, error: cards.length === 0 };
+          next[idx] = {
+            ingredient: ing,
+            cards,
+            loading: false,
+            error: cards.length === 0,
+          };
           return next;
         });
       } catch {
@@ -140,7 +160,12 @@ export default function RecommendScreen() {
         setIngredientGroups((prev) => {
           if (idx >= prev.length) return prev;
           const next = [...prev];
-          next[idx] = { ingredient: ing, cards: [], loading: false, error: true };
+          next[idx] = {
+            ingredient: ing,
+            cards: [],
+            loading: false,
+            error: true,
+          };
           return next;
         });
       }
@@ -163,12 +188,16 @@ export default function RecommendScreen() {
 
       // 임박 재료(D-7 이하) 우선, 없으면 만료일 있는 재료
       const urgentIngs = invList
-        .filter((inv) => { const d = daysUntil(inv.expiresAt); return d !== null && d <= 7; })
+        .filter((inv) => {
+          const d = daysUntil(inv.expiresAt);
+          return d !== null && d <= 7;
+        })
         .map((inv) => inv.itemName);
 
-      const crawlTargets = urgentIngs.length > 0
-        ? urgentIngs
-        : invList.slice(0, 4).map((inv) => inv.itemName);
+      const crawlTargets =
+        urgentIngs.length > 0
+          ? urgentIngs
+          : invList.slice(0, 4).map((inv) => inv.itemName);
 
       if (crawlTargets.length > 0) {
         loadIngredientGroups(crawlTargets);
@@ -224,8 +253,7 @@ export default function RecommendScreen() {
       arr = arr.filter((x) => x.cuisineType === cuisineFilter);
 
     return [...arr].sort(
-      (a, b) =>
-        Number(b.hasUrgent) - Number(a.hasUrgent) || b.score - a.score,
+      (a, b) => Number(b.hasUrgent) - Number(a.hasUrgent) || b.score - a.score,
     );
   }, [computed, cuisineFilter, q, timePreset]);
 
@@ -245,11 +273,17 @@ export default function RecommendScreen() {
           <View key={group.ingredient} style={{ marginBottom: 4 }}>
             {/* 재료별 헤더 */}
             <View style={styles.sectionHead}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
                 <Text style={styles.h3}>
-                  임박재료 <Text style={{ color: THEME.brand }}>{group.ingredient}</Text> 가 들어가는 레시피
+                  임박재료{" "}
+                  <Text style={{ color: THEME.brand }}>{group.ingredient}</Text>{" "}
+                  가 들어가는 레시피
                 </Text>
-                {group.loading && <ActivityIndicator size="small" color={THEME.brand} />}
+                {group.loading && (
+                  <ActivityIndicator size="small" color={THEME.brand} />
+                )}
               </View>
               <Text style={styles.meta}>식품의약품안전처 레시피 DB</Text>
             </View>
@@ -257,7 +291,9 @@ export default function RecommendScreen() {
             {/* 에러 */}
             {group.error && !group.loading && (
               <View style={[styles.errorBanner, { marginBottom: 4 }]}>
-                <Text style={styles.errorText}>{group.ingredient} 관련 레시피를 찾지 못했어.</Text>
+                <Text style={styles.errorText}>
+                  {group.ingredient} 관련 레시피를 찾지 못했어.
+                </Text>
               </View>
             )}
 
@@ -267,15 +303,25 @@ export default function RecommendScreen() {
                 horizontal
                 nestedScrollEnabled
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 14, gap: 12, paddingVertical: 4 }}
+                contentContainerStyle={{
+                  paddingHorizontal: 14,
+                  gap: 12,
+                  paddingVertical: 4,
+                }}
               >
                 {group.cards.map((card: RecipeCard, i: number) => (
                   <Pressable
                     key={i}
                     onPress={() =>
-                      router.push({ pathname: "/recipe-detail", params: { name: card.name } })
+                      router.push({
+                        pathname: "/recipe-detail",
+                        params: { name: card.name },
+                      })
                     }
-                    style={({ pressed }) => [styles.crawlCard, pressed && { opacity: 0.88 }]}
+                    style={({ pressed }) => [
+                      styles.crawlCard,
+                      pressed && { opacity: 0.88 },
+                    ]}
                   >
                     {!!card.imageUrl ? (
                       <Image
@@ -284,7 +330,12 @@ export default function RecommendScreen() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <View style={[styles.crawlThumb, styles.crawlThumbPlaceholder]}>
+                      <View
+                        style={[
+                          styles.crawlThumb,
+                          styles.crawlThumbPlaceholder,
+                        ]}
+                      >
                         <Text style={{ fontSize: 24 }}>🍽️</Text>
                       </View>
                     )}
@@ -292,11 +343,6 @@ export default function RecommendScreen() {
                       <Text style={styles.crawlCardTitle} numberOfLines={2}>
                         {card.name}
                       </Text>
-                      {card.ingredients?.length > 0 && (
-                        <Text style={styles.crawlCardIngredients} numberOfLines={2}>
-                          {card.ingredients.slice(0, 4).join(" · ")}
-                        </Text>
-                      )}
                     </View>
                   </Pressable>
                 ))}
@@ -310,10 +356,7 @@ export default function RecommendScreen() {
 
   const Header = (
     <View style={{ paddingBottom: 8 }}>
-      <AppHeader
-        title="Recommend"
-        subtitle="임박 재료 우선 요리 추천"
-      />
+      <AppHeader title="Recommend" subtitle="임박 재료 우선 요리 추천" />
 
       {/* 검색·필터 툴바 — 헤더 아래 별도 라인 */}
       <View style={styles.toolbar}>
@@ -325,7 +368,7 @@ export default function RecommendScreen() {
             pressed && { opacity: 0.85 },
           ]}
         >
-          <Text style={styles.toolbarIconText}>🔍</Text>
+          <MaterialIcons name="search" size={20} color={showSearch ? THEME.brand : THEME.text} />
         </Pressable>
         <View>
           <Pressable
@@ -336,16 +379,24 @@ export default function RecommendScreen() {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.toolbarIconText}>🧪</Text>
+            <MaterialIcons name="tune" size={20} color={filterOpen ? THEME.brand : THEME.text} />
           </Pressable>
           {activeFilterCount > 0 && <View style={styles.badgeDot} />}
         </View>
         {activeFilterCount > 0 && (
           <Pressable
-            onPress={() => { setTimePreset("30"); setCuisineFilter("ALL"); }}
-            style={({ pressed }) => [styles.iconCircle, pressed && { opacity: 0.85 }]}
+            onPress={() => {
+              setTimePreset("30");
+              setCuisineFilter("ALL");
+            }}
+            style={({ pressed }) => [
+              styles.iconCircle,
+              pressed && { opacity: 0.85 },
+            ]}
           >
-            <Text style={{ fontSize: 11, fontWeight: "900", color: "#B42318" }}>초기화</Text>
+            <Text style={{ fontSize: 11, fontWeight: "900", color: "#B42318" }}>
+              초기화
+            </Text>
           </Pressable>
         )}
       </View>
@@ -446,9 +497,12 @@ export default function RecommendScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: THEME.bg }}
+      edges={["bottom", "left", "right"]}
+    >
       <FlatList
-        data={filtered}
+        data={filtered.slice(0, 8)}
         keyExtractor={(x, idx) => `${x.name}-${idx}`}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={load} />
@@ -460,16 +514,33 @@ export default function RecommendScreen() {
         columnWrapperStyle={{ paddingHorizontal: 14, gap: 12 }}
         renderItem={({ item }: any) => {
           const headlineBadge = item.hasUrgent
-            ? { label: "임박 포함", color: THEME.danger, bg: "rgba(235,87,87,0.12)" }
+            ? {
+                label: "임박 포함",
+                color: THEME.danger,
+                bg: "rgba(235,87,87,0.12)",
+              }
             : { label: "추천", color: "#B7791F", bg: "rgba(242,201,76,0.16)" };
 
-          const cc = CUISINE_COLORS[item.cuisineType] ?? { color: THEME.muted, bg: "rgba(107,114,128,0.12)" };
-          const cl = CUISINE_LABELS[item.cuisineType as CuisineType] ?? item.cuisineType;
+          const cc = CUISINE_COLORS[item.cuisineType] ?? {
+            color: THEME.muted,
+            bg: "rgba(107,114,128,0.12)",
+          };
+          const cl =
+            CUISINE_LABELS[item.cuisineType as CuisineType] ?? item.cuisineType;
 
           return (
             <Pressable
-              onPress={() => router.push({ pathname: "/recipe-detail", params: { name: item.name } })}
-              style={({ pressed }) => [styles.card, { flex: 1 }, pressed && { opacity: 0.88 }]}
+              onPress={() =>
+                router.push({
+                  pathname: "/recipe-detail",
+                  params: { name: item.name },
+                })
+              }
+              style={({ pressed }) => [
+                styles.card,
+                { flex: 1 },
+                pressed && { opacity: 0.88 },
+              ]}
             >
               {!!item.imageUrl && (
                 <Image
@@ -483,8 +554,15 @@ export default function RecommendScreen() {
                   <Text style={styles.cardTitle} numberOfLines={2}>
                     {item.name}
                   </Text>
-                  <View style={[styles.badge, { backgroundColor: headlineBadge.bg }]}>
-                    <Text style={[styles.badgeText, { color: headlineBadge.color }]}>
+                  <View
+                    style={[
+                      styles.badge,
+                      { backgroundColor: headlineBadge.bg },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.badgeText, { color: headlineBadge.color }]}
+                    >
                       {headlineBadge.label}
                     </Text>
                   </View>
@@ -498,9 +576,16 @@ export default function RecommendScreen() {
 
                 <View style={styles.footerRow}>
                   <View style={[styles.badge, { backgroundColor: cc.bg }]}>
-                    <Text style={[styles.badgeText, { color: cc.color }]}>{cl}</Text>
+                    <Text style={[styles.badgeText, { color: cc.color }]}>
+                      {cl}
+                    </Text>
                   </View>
-                  <View style={[styles.badge, { backgroundColor: "rgba(127,183,126,0.18)" }]}>
+                  <View
+                    style={[
+                      styles.badge,
+                      { backgroundColor: "rgba(127,183,126,0.18)" },
+                    ]}
+                  >
                     <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
                       {item.cookingTime}분
                     </Text>
@@ -523,7 +608,10 @@ export default function RecommendScreen() {
             </View>
             <Pressable
               onPress={load}
-              style={({ pressed }) => [styles.btnGhost, pressed && { opacity: 0.9 }]}
+              style={({ pressed }) => [
+                styles.btnGhost,
+                pressed && { opacity: 0.9 },
+              ]}
             >
               <Text style={styles.btnGhostText}>새로고침</Text>
             </Pressable>
@@ -535,7 +623,13 @@ export default function RecommendScreen() {
 }
 
 const styles: any = {
-  topbar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingTop: 10 },
+  topbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+  },
   h2: { fontSize: 22, fontWeight: "800", color: THEME.text },
   sub: { marginTop: 2, fontSize: 12, color: THEME.muted },
   h3: { fontSize: 16, fontWeight: "800", color: THEME.text },
@@ -652,7 +746,7 @@ const styles: any = {
     marginTop: 12,
     marginHorizontal: 14,
     padding: 12,
-    backgroundColor: "rgba(255,255,255,0.65)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: THEME.border,
     borderRadius: 14,
@@ -671,7 +765,7 @@ const styles: any = {
   errorText: { color: "#B42318", fontSize: 12, fontWeight: "700" },
 
   card: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME.border,
@@ -699,7 +793,13 @@ const styles: any = {
   badgeText: { fontSize: 12, fontWeight: "900" },
 
   cardTitle: { flex: 1, fontSize: 15, fontWeight: "900", color: THEME.text },
-  desc: { marginTop: 8, fontSize: 12, color: THEME.muted, lineHeight: 16, marginBottom: 10 },
+  desc: {
+    marginTop: 8,
+    fontSize: 12,
+    color: THEME.muted,
+    lineHeight: 16,
+    marginBottom: 10,
+  },
 
   footerRow: {
     flexDirection: "row",
@@ -754,7 +854,7 @@ const styles: any = {
   // 만개의 레시피 가로 스크롤 카드
   crawlCard: {
     width: 150,
-    backgroundColor: "rgba(255,255,255,0.90)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME.border,
