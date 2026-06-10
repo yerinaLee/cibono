@@ -62,6 +62,9 @@ public class ShoppingListController {
         return repo.findById(id)
             .filter(item -> item.getUserId().equals(UserContext.userId()))
             .map(item -> {
+                if (body.containsKey("itemName") && body.get("itemName") != null) {
+                    item.setItemName((String) body.get("itemName"));
+                }
                 if (body.containsKey("quantity")) {
                     Object q = body.get("quantity");
                     item.setQuantity(q == null ? null : new BigDecimal(q.toString()));

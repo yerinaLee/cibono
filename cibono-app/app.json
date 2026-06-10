@@ -28,6 +28,7 @@
     },
     "plugins": [
       "expo-router",
+      ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }],
       [
         "expo-splash-screen",
         {
@@ -44,6 +45,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "48edf5aa-9e69-4da6-80f2-7c6a387db8d9"
+      }
     }
   }
 }

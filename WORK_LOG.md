@@ -1,7 +1,7 @@
 # Cibono 프로젝트 작업 로그
 
 > AI 대화 간 컨텍스트 공유용. 굵직한 작업 흐름만 기록.
-> 업데이트: 2026-06-08 (3차)
+> 업데이트: 2026-06-10 (6차)
 
 ---
 
@@ -95,8 +95,164 @@
 
 ---
 
+### UI/UX 개편 + 쇼핑리스트 + 공통 헤더 (2026-06-09)
+
+#### 버그 수정
+- **Recommend 시간 필터 오작동** — `snapToPreset()` 이 cookingTime을 버킷으로 스냅해 비교하던 로직 제거 → `cookingTime <= maxMin` 직접 비교로 수정
+- **Recommend 카드 클릭 에러** — 비동기 그룹 로드 중 상태 초기화 시 sparse array `undefined` 발생 → stale 업데이트 `idx >= prev.length` 가드 추가
+
+#### Recommend 개선
+- **카드 블럭 전체 클릭** — `View` → `Pressable` 로 변경, '보기' 버튼 제거
+- **레시피 미리보기 이미지** — `recipe` 테이블에 `image_url VARCHAR(500)` 컬럼 추가
+  - `Recipe.java` — `imageUrl` 필드 + `getImageUrl()` 추가
+  - `RecipeService.RecipeSuggestion` record에 `imageUrl` 추가
+  - 카드 상단에 100px 썸네일 표시 (없으면 빈 영역)
+- **검색·필터 툴바** — AppHeader 내부 `rightExtra` → 헤더 아래 독립 라인으로 분리, 필터 활성 시 "초기화" 버튼 표시
+
+#### 쇼핑리스트 신규 기능
+- **DB** — `shopping_list` 테이블 (`id, user_id, item_name, quantity, unit, checked, created_at`)
+- **백엔드** — `ShoppingListItem.java`, `ShoppingListRepository.java`, `ShoppingListController.java`
+  - `GET /shopping-list` — 목록 조회
+  - `POST /shopping-list` — 단일 추가
+  - `POST /shopping-list/bulk` — 복수 추가 (레시피 재료 일괄)
+  - `PATCH /shopping-list/{id}` — 수량·단위 수정
+  - `DELETE /shopping-list/{id}` — 삭제
+- **`app/shopping-list.tsx`** 신규 화면
+  - 목록 조회 / 직접 추가 모달 / 수량·단위 수정 모달 / 삭제
+  - 항목에서 수량 영역 탭 → 수정 모달 오픈
+- **`recipe-detail.tsx`** — 재료 선택 → 쇼핑리스트 추가
+  - 재료 칩 탭으로 선택/해제 (✓ 표시)
+  - 1개 이상 선택 시 하단 플로팅 버튼 "🛒 N개 쇼핑리스트에 담기" 표시
+  - `POST /shopping-list/bulk` 로 일괄 추가, 성공 시 "✓ 담겼어!" 2초 표시
+
+#### 공통 헤더 (AppHeader)
+- **`components/AppHeader.tsx`** 신규 컴포넌트
+  - 항상 우측에 🛒(쇼핑리스트) + ⚙️(설정) 버튼 포함
+  - `rightExtra` prop으로 화면별 버튼 주입
+- **`app/settings.tsx`** 신규 화면 — 앱 버전 v0.1.0, 기술 스택 표시
+- dashboard / recommend / inventory 탭에 AppHeader 적용
+
+#### 대시보드 임박 재료 개선
+- **임박 재료 아이콘 칩** — 텍스트 나열 → 재료별 🥬 칩 (이름 + D-day 표시)
+- **칩 클릭 → 재료 레시피 화면** — `app/ingredient-recipes.tsx` 신규 화면
+  - `GET /recipes/search-by-ingredient?ingredient={name}` 호출
+  - 레시피 카드 목록 (이미지 + 이름 + 재료) 표시, 탭 시 `recipe-detail`로 이동
+
+#### Inventory 개선
+- **검색·필터·스캔 툴바** — AppHeader 내부 → 헤더 아래 독립 라인으로 분리
+- AppHeader `rightExtra`에는 "재료 추가" 버튼만 유지
+
+---
+
+### 모바일 APK 테스트 + 버그 수정 + 레시피 저장 기능 (2026-06-10)
+
+#### APK 빌드 환경 세팅
+- **ngrok** — 로컬 WiFi 없이 외부에서 백엔드 접속용 터널 구성 (`ngrok http 8080`)
+- **EAS Build** — `eas.json` `preview` 프로파일에 `"android": { "buildType": "apk" }` 추가해 AAB → APK로 변경
+- **`expo-build-properties`** 플러그인 추가 + `app.json`에 `usesCleartextTraffic: true` 설정
+  - Android API 28+ 기본 차단되는 `http://` 이미지 URL(식약처) 허용
+
+#### 모바일(Galaxy S24) 테스트 후 버그 수정
+
+**[헤더 Safe Area]**
+- `AppHeader.tsx` — `useSafeAreaInsets` 적용, `paddingTop: insets.top + 6` 동적 계산
+- `SafeAreaView` import를 `react-native` → `react-native-safe-area-context`로 전체 교체
+  - 대상: `dashboard.tsx`, `recommend.tsx`, `inventory.tsx`, `settings.tsx`, `ingredient-recipes.tsx`
+  - 탭 화면: `edges={["bottom", "left", "right"]}` (AppHeader가 top 처리)
+  - 비탭 화면: edges 지정 없음 (SafeAreaView가 top 포함 전체 처리)
+
+**[색상 통일]**
+- 카드/섹션 배경 `rgba(255,255,255,0.88)` → `#FFFFFF` solid 컬러 전체 교체
+  - Android `elevation` 있을 때 반투명 배경이 PC와 다르게 렌더링되는 문제 해결
+  - 대상: `dashboard.tsx`, `recommend.tsx`, `ingredient-recipes.tsx`
+
+**[D-Day 버그]**
+- `dashboard.tsx` — 만료된 재료가 `D--5` 로 표시되던 버그 수정
+  - `d < 0 ? \`D+${Math.abs(d)}\` : \`D-${d}\`` 로 변경
+
+**[쇼핑리스트 수정]**
+- `shopping-list.tsx` — 항목 전체 클릭 → 수정 모달 오픈 (기존: 수량 영역만 클릭)
+- 수정 모달에 재료명(`editName`) 필드 추가 — 재료명 + 수량 + 단위 모두 수정 가능
+- `ShoppingListController.java` `PATCH` — `itemName` 업데이트 지원 추가
+
+**[Recommend]**
+- "오늘의 추천" 섹션 최대 8개로 제한 (`filtered.slice(0, 8)`)
+
+#### 레시피 저장(북마크) 기능 신규 추가
+
+**[백엔드]**
+- `SavedRecipe.java` 신규 엔티티 — `id, user_id, recipe_name, image_url, source_type, source_url, ingredients, created_at`
+  - `UNIQUE (user_id, recipe_name)` 제약으로 중복 저장 방지
+- `SavedRecipeRepository.java` 신규 — 키워드 검색 쿼리 포함
+- `SavedRecipeController.java` 신규
+  - `GET /saved-recipes?q=...` — 목록 조회 (레시피명 + 재료 키워드 검색)
+  - `GET /saved-recipes/exists?name=...` — 저장 여부 확인 (`{"saved": true/false}`)
+  - `POST /saved-recipes` — 저장 (이미 있으면 기존 반환, idempotent)
+  - `DELETE /saved-recipes/by-name?name=...` — 이름으로 삭제
+  - `DELETE /saved-recipes/{id}` — ID로 삭제
+- `sql/schema.sql` — `saved_recipe` 테이블 정의 추가 (14번)
+  - JPA `ddl-auto=update`로 런타임에도 자동 생성됨
+
+**[프론트]**
+- `recipe-detail.tsx` — 상단 우측에 📌 저장 토글 버튼 추가
+  - 진입 시 `GET /saved-recipes/exists` 로 저장 여부 확인
+  - 🔖(미저장) / 📌(저장됨) 상태 표시 및 토글
+- `AppHeader.tsx` — 우측 버튼에 📌 버튼 추가 → `/saved-recipes` 이동
+  - 버튼 순서: `rightExtra` → 📌 → 🛒 → ⚙️
+- `app/saved-recipes.tsx` 신규 화면
+  - 저장된 레시피 목록 + 검색 (레시피명/재료 키워드)
+  - 식약처/블로그 태그 표시, 삭제 버튼, 항목 탭 시 `recipe-detail`로 이동
+
+---
+
+### UI 고도화 + 버그 수정 (2026-06-10, 6차)
+
+#### recipe-detail.tsx — 조리 순서 복원 + 블로그 저장 개선
+- **조리 순서(steps) 섹션 복원** — 이전 편집에서 JSX `)}` 누락으로 삭제된 "조리 순서" 섹션 재추가
+  - `detail.steps.length > 0` 조건부 렌더링
+  - 번호 원형 뱃지(`stepNum`) + 본문 텍스트(`stepText`) 레이아웃
+  - 스타일 추가: `stepRow`, `stepNum`, `stepNumText`, `stepText`
+- **블로그 저장 후 클릭 → 직접 연동** — 이 작업은 `saved-recipes.tsx`에서 처리 (아래 참조)
+
+#### saved-recipes.tsx — 전면 개편
+- `SavedRecipe` 타입에 `sourceUrl?: string | null` 추가
+- **Swipeable 스와이프 삭제** — `react-native-gesture-handler` `Swipeable` 적용
+  - 왼쪽으로 스와이프 → 빨간 삭제 액션(`MaterialIcons delete` 아이콘 + "삭제" 텍스트) 표시
+  - `openSwipeRef`로 동시에 열린 swipe row 방지
+- **인라인 삭제 버튼 제거** — 기존 행 우측 "삭제" 버튼 삭제
+- **클릭 분기 처리**
+  - `BLOG` 타입 → `Linking.openURL(item.sourceUrl)` 로 저장된 특정 블로그 글 직접 열기
+  - `FOOD_SAFETY` 타입 → `router.push("/recipe-detail", { name })` 로 레시피 상세 이동
+- **BLOG 태그 옆 "바로 열기" 태그** 추가 (외부 링크 표시)
+- 아이콘 전체 MaterialIcons 교체 (← 뒤로가기 → `arrow-back`, ⌕ 검색 → `search`, × → `close`)
+
+#### dashboard.tsx — 추천 요리 임박재료 우선순위 정렬
+- `sortedReco` useMemo 추가
+  - `urgent` 목록의 `itemName` Set과 각 Suggestion의 `ingredients` 배열을 교차 비교
+  - 임박 재료가 많이 포함된 레시피 순으로 내림차순 정렬
+- 추천 요리 그리드를 `reco.slice(0,4)` → `sortedReco.slice(0,4)` 로 변경
+
+#### _layout.tsx (탭 바) — 아이콘 MaterialIcons 교체
+- `@expo/vector-icons` `MaterialIcons` 임포트 추가
+- NAV 배열 타입: `icon: string` (이모지) → `icon: IconName` (MaterialIcons)
+- 아이콘 매핑:
+  - `dashboard` 🍃 → `home`
+  - `deals` 🏷️ → `local-offer`
+  - `alerts` 🔔 → `notifications`
+  - `inventory` 🧊 → `kitchen`
+  - `recommend` 👨‍🍳 → `restaurant`
+  - `alerts_rules` 🧷 → `rule`
+- 사이드바 / 바텀바 렌더링에서 `<Text>{item.icon}</Text>` → `<MaterialIcons name={item.icon} size={...} color={...} />` 로 교체
+- 포커스 상태에 따라 색상 동적 적용 (`sageDeep` vs 기본 muted)
+
+#### AppHeader.tsx — 저장 아이콘 통일
+- 저장된 레시피 버튼 아이콘: `push-pin` → `bookmark-border` (recipe-detail.tsx 저장 아이콘과 동일)
+
+---
+
 ## 현재 진행 중
 
+- [ ] 새 APK 빌드 후 핸드폰에 설치 (`npx eas-cli build -p android --profile preview`)
 - [ ] 식약처 API 배치 수집 or 레시피 데이터셋 대량 추가
 - [ ] 영수증 OCR 정확도 높이기 (Gemini API 프롬프트 튜닝)
 

@@ -1,3 +1,4 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
 import {
@@ -30,18 +31,19 @@ type RouteName =
   | "inventory"
   | "recommend";
 
+type IconName = React.ComponentProps<typeof MaterialIcons>["name"];
+
 const NAV: {
   name: RouteName;
   label: string;
-  icon: string; // 이모지로 간단히 (원하면 나중에 svg/icon으로 교체)
+  icon: IconName;
 }[] = [
-  { name: "dashboard", label: "홈", icon: "🍃" },
-  { name: "deals", label: "특가", icon: "🏷️" },
-  { name: "alerts", label: "알림", icon: "🔔" },
-  { name: "inventory", label: "냉장고", icon: "🧊" },
-  { name: "recommend", label: "추천", icon: "👨‍🍳" },
-  // Alert Rules는 사이드바에만 보이게(HTML도 그런 느낌)
-  { name: "alerts_rules", label: "규칙", icon: "🧷" },
+  { name: "dashboard", label: "홈", icon: "home" },
+  { name: "deals", label: "특가", icon: "local-offer" },
+  { name: "alerts", label: "알림", icon: "notifications" },
+  { name: "inventory", label: "냉장고", icon: "kitchen" },
+  { name: "recommend", label: "추천", icon: "restaurant" },
+  { name: "alerts_rules", label: "규칙", icon: "rule" },
 ];
 
 function Brand() {
@@ -107,9 +109,12 @@ function ResponsiveTabBar({ state, descriptors, navigation }: any) {
                 {/* active bar */}
                 {focused ? <View style={styles.activeBar} /> : null}
 
-                <Text style={[styles.navIcon, focused && { opacity: 1 }]}>
-                  {item.icon}
-                </Text>
+                <MaterialIcons
+                  name={item.icon}
+                  size={20}
+                  color={focused ? THEME.sageDeep : "rgba(22,25,24,.55)"}
+                  style={styles.navIcon}
+                />
                 <Text
                   style={[styles.navText, focused && { color: THEME.sageInk }]}
                 >
@@ -152,14 +157,11 @@ function ResponsiveTabBar({ state, descriptors, navigation }: any) {
                 pressed && { opacity: 0.85 },
               ]}
             >
-              <Text
-                style={[
-                  styles.bottomIcon,
-                  focused && { color: THEME.sageDeep },
-                ]}
-              >
-                {item.icon}
-              </Text>
+              <MaterialIcons
+                name={item.icon}
+                size={22}
+                color={focused ? THEME.sageDeep : "rgba(22,25,24,.55)"}
+              />
               <Text
                 style={[
                   styles.bottomLabel,
@@ -285,7 +287,7 @@ const styles: any = {
     borderRadius: 999,
     backgroundColor: THEME.sageDeep,
   },
-  navIcon: { width: 20, textAlign: "center", opacity: 0.7 },
+  navIcon: { width: 20 },
   navText: { fontSize: 13.5, fontWeight: "800", color: "rgba(22,25,24,.65)" },
   pill: {
     marginLeft: "auto",

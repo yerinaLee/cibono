@@ -1,17 +1,19 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import AppHeader from "../../components/AppHeader";
 import {
+    Image,
     Modal,
     Platform,
     Pressable,
     RefreshControl,
-    SafeAreaView,
     ScrollView,
     Text,
     TextInput,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type Inventory = {
@@ -21,12 +23,6 @@ type Inventory = {
   unit?: string | null;
   storage: string;
   expiresAt?: string | null; // YYYY-MM-DD
-};
-
-type AlertEvent = {
-  id: number;
-  dealId: number;
-  seen: boolean;
 };
 
 type Deal = {
@@ -39,6 +35,7 @@ type Deal = {
 
 type Suggestion = {
   name: string;
+  imageUrl?: string;
   ingredients: string[];
   missingCount: number;
   score: number;
@@ -75,7 +72,6 @@ export default function DashboardScreen() {
 
   // fetched data
   const [inventory, setInventory] = useState<Inventory[]>([]);
-  const [alerts, setAlerts] = useState<AlertEvent[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [reco, setReco] = useState<Suggestion[]>([]);
 
@@ -95,14 +91,12 @@ export default function DashboardScreen() {
     setError("");
     setRefreshing(true);
     try {
-      const [invRes, alertRes, dealRes, recoRes] = await Promise.all([
+      const [invRes, dealRes, recoRes] = await Promise.all([
         api.get<Inventory[]>("/inventory"),
-        api.get<AlertEvent[]>("/alerts"),
         api.get<Deal[]>("/deals"),
         api.get<Suggestion[]>("/recommendations/today"),
       ]);
       setInventory(invRes.data ?? []);
-      setAlerts(alertRes.data ?? []);
       setDeals(dealRes.data ?? []);
       setReco(recoRes.data ?? []);
     } catch (e: any) {
@@ -124,12 +118,21 @@ export default function DashboardScreen() {
     return list;
   }, [inventory]);
 
-  const urgentCount = urgent.length;
   const urgentPreview = urgent.slice(0, 3);
-
-  const unreadCount = alerts.filter((a) => !a.seen).length;
-  const recoCount = Math.min(4, reco.length);
   const dealsCount = deals.length;
+
+  const sortedReco = useMemo(() => {
+    const urgentNames = new Set(urgent.map((x) => x.itemName.toLowerCase()));
+    return [...reco].sort((a, b) => {
+      const aMatches = a.ingredients.filter((ing) =>
+        urgentNames.has(ing.toLowerCase())
+      ).length;
+      const bMatches = b.ingredients.filter((ing) =>
+        urgentNames.has(ing.toLowerCase())
+      ).length;
+      return bMatches - aMatches;
+    });
+  }, [reco, urgent]);
 
   const todayLabel = useMemo(() => {
     const d = new Date();
@@ -171,7 +174,7 @@ export default function DashboardScreen() {
   }, [expiresAt, load, name, qty, storage]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }} edges={["bottom", "left", "right"]}>
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={load} />
@@ -237,109 +240,75 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.grid}>
-          {/* Urgent inventory */}
+          {/* 임박 재료 — 숫자 없이, 이름 크게, 클릭 시 레시피 */}
           <View style={styles.card}>
             <View style={styles.rowBetween}>
               <Text style={styles.cardTitle}>임박 재료</Text>
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: "rgba(242,201,76,0.16)" },
-                ]}
-              >
-                <Text style={[styles.badgeText, { color: "#B7791F" }]}>
-                  D-2 이내
-                </Text>
+              <View style={[styles.badge, { backgroundColor: "rgba(242,201,76,0.16)" }]}>
+                <Text style={[styles.badgeText, { color: "#B7791F" }]}>D-2 이내</Text>
               </View>
             </View>
-            <Text style={styles.kpi}>{urgentCount}</Text>
-
-            {/* 임박 재료 아이콘 칩 — 클릭 시 해당 재료 레시피로 이동 */}
             {urgentPreview.length > 0 ? (
               <View style={styles.chipRow}>
                 {urgentPreview.map((x) => (
                   <Pressable
                     key={x.id}
                     onPress={() =>
-                      router.push({
-                        pathname: "/ingredient-recipes",
-                        params: { ingredient: x.itemName },
-                      })
+                      router.push({ pathname: "/ingredient-recipes", params: { ingredient: x.itemName } })
                     }
                     style={({ pressed }) => [styles.urgentChip, pressed && { opacity: 0.75 }]}
                   >
-                    <Text style={styles.urgentChipIcon}>🥬</Text>
-                    <View>
-                      <Text style={styles.urgentChipName}>{x.itemName}</Text>
-                      <Text style={styles.urgentChipDday}>D-{x.d}</Text>
-                    </View>
+                    <Text style={styles.urgentChipName}>{x.itemName}</Text>
+                    <MaterialIcons name="chevron-right" size={14} color="#B7791F" />
                   </Pressable>
                 ))}
               </View>
             ) : (
-              <Text style={styles.desc}>임박 재료가 없어</Text>
+              <Text style={styles.desc}>임박 재료가 없어 👍</Text>
             )}
-
-            <View style={{ height: 10 }} />
             <Pressable
               onPress={() => router.push("/(tabs)/inventory")}
-              style={({ pressed }) => [styles.btn, pressed && { opacity: 0.9 }]}
+              style={({ pressed }) => [styles.btn, { marginTop: 10 }, pressed && { opacity: 0.9 }]}
             >
               <Text style={styles.btnText}>냉장고 보기</Text>
             </Pressable>
           </View>
 
-          {/* Alerts */}
+          {/* 추천 요리 — 4개 이미지+이름 그리드 */}
           <View style={styles.card}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.cardTitle}>새 알림</Text>
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: "rgba(235,87,87,0.12)" },
-                ]}
-              >
-                <Text style={[styles.badgeText, { color: "#B42318" }]}>
-                  미확인
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.kpi}>{unreadCount}</Text>
-            <Text style={styles.desc}>
-              {unreadCount > 0 ? "특가 알림이 도착했어" : "미확인 알림이 없어"}
-            </Text>
-            <View style={{ height: 10 }} />
-            <Pressable
-              onPress={() => router.push("/(tabs)/alerts")}
-              style={({ pressed }) => [styles.btn, pressed && { opacity: 0.9 }]}
-            >
-              <Text style={styles.btnText}>알림 확인</Text>
-            </Pressable>
-          </View>
-
-          {/* Recommend */}
-          <View style={styles.card}>
-            <View style={styles.rowBetween}>
+            <View style={[styles.rowBetween, { marginBottom: 10 }]}>
               <Text style={styles.cardTitle}>추천 요리</Text>
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: "rgba(39,174,96,0.12)" },
-                ]}
-              >
-                <Text style={[styles.badgeText, { color: THEME.ok }]}>
-                  Today
-                </Text>
+              <View style={[styles.badge, { backgroundColor: "rgba(39,174,96,0.12)" }]}>
+                <Text style={[styles.badgeText, { color: THEME.ok }]}>Today</Text>
               </View>
             </View>
-            <Text style={styles.kpi}>{recoCount}</Text>
-            <Text style={styles.desc}>임박 재료 기반 우선 추천</Text>
-            <View style={{ height: 10 }} />
+            {sortedReco.slice(0, 4).length > 0 ? (
+              <View style={styles.recoGrid}>
+                {sortedReco.slice(0, 4).map((item, i) => (
+                  <Pressable
+                    key={i}
+                    onPress={() => router.push({ pathname: "/recipe-detail", params: { name: item.name } })}
+                    style={({ pressed }) => [styles.recoCard, pressed && { opacity: 0.85 }]}
+                  >
+                    {item.imageUrl ? (
+                      <Image source={{ uri: item.imageUrl }} style={styles.recoThumb} resizeMode="cover" />
+                    ) : (
+                      <View style={[styles.recoThumb, styles.recoThumbPlaceholder]}>
+                        <Text style={{ fontSize: 22 }}>🍽️</Text>
+                      </View>
+                    )}
+                    <Text style={styles.recoName} numberOfLines={2}>{item.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.desc}>재고를 등록하면 추천이 나와</Text>
+            )}
             <Pressable
               onPress={() => router.push("/(tabs)/recommend")}
-              style={({ pressed }) => [styles.btn, pressed && { opacity: 0.9 }]}
+              style={({ pressed }) => [styles.btn, { marginTop: 10 }, pressed && { opacity: 0.9 }]}
             >
-              <Text style={styles.btnText}>추천 보기</Text>
+              <Text style={styles.btnText}>전체 추천 보기</Text>
             </Pressable>
           </View>
         </View>
@@ -582,7 +551,7 @@ const styles: any = {
   sectionHead: {
     marginTop: 14,
     padding: 12,
-    backgroundColor: "rgba(255,255,255,0.65)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: THEME.border,
     borderRadius: 14,
@@ -591,7 +560,7 @@ const styles: any = {
   grid: { marginTop: 12, gap: 12 },
 
   card: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME.border,
@@ -624,17 +593,46 @@ const styles: any = {
   urgentChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: "rgba(242,201,76,0.14)",
     borderWidth: 1,
     borderColor: "rgba(242,201,76,0.35)",
   },
-  urgentChipIcon: { fontSize: 16 },
-  urgentChipName: { fontSize: 12, fontWeight: "900", color: THEME.text },
-  urgentChipDday: { fontSize: 11, color: "#B7791F", fontWeight: "700" },
+  urgentChipName: { fontSize: 15, fontWeight: "900", color: THEME.text },
+
+  // 추천 요리 그리드
+  recoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  recoCard: {
+    width: "47%",
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "#FFFFFF",
+  },
+  recoThumb: {
+    width: "100%",
+    height: 80,
+    backgroundColor: "rgba(127,183,126,0.12)",
+  },
+  recoThumbPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recoName: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: THEME.text,
+    padding: 8,
+    lineHeight: 16,
+  },
 
   actionsRow: {
     marginTop: 12,
