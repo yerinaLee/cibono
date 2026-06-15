@@ -1,7 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
-import { api, explainNetworkHint } from "../../src/api/client";
+import { api, explainNetworkHint, proxyImageUrl } from "../../src/api/client";
 
 type CuisineType = "ALL" | "KOREAN" | "WESTERN" | "CHINESE" | "GLOBAL";
 
@@ -41,6 +41,15 @@ type IngredientGroup = {
   cards: RecipeCard[];
   loading: boolean;
   error: boolean;
+};
+
+type BlogSearchResult = {
+  title: string;
+  link: string;
+  description: string;
+  bloggername: string;
+  postdate: string;
+  imageUrl?: string | null;
 };
 
 const CUISINE_LABELS: Record<CuisineType, string> = {
@@ -93,12 +102,6 @@ function norm(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toLowerCase();
 }
 
-function snapToPreset(minutes: number): number {
-  const buckets = [15, 30, 45, 60];
-  return buckets.reduce((prev, curr) =>
-    Math.abs(curr - minutes) < Math.abs(prev - minutes) ? curr : prev,
-  );
-}
 
 export default function RecommendScreen() {
   const router = useRouter();
@@ -112,12 +115,18 @@ export default function RecommendScreen() {
   );
   const cancelRef = useRef(false);
 
+  const [blogResults, setBlogResults] = useState<BlogSearchResult[]>([]);
+  const [blogLoading, setBlogLoading] = useState(false);
+  const [savedSearchBlogs, setSavedSearchBlogs] = useState<Set<string>>(new Set());
+  const [savingSearchBlog, setSavingSearchBlog] = useState<string | null>(null);
+
+  const [inputVal, setInputVal] = useState("");
   const [q, setQ] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [timePreset, setTimePreset] = useState<"15" | "30" | "45" | "60+">(
-    "30",
-  );
+  const [timePreset, setTimePreset] = useState<
+    "ALL" | "15" | "30" | "45" | "60+"
+  >("ALL");
   const [cuisineFilter, setCuisineFilter] = useState<CuisineType>("ALL");
   // const [noSpicy, setNoSpicy] = useState(true); // noSpicy 미구현 — 주석 처리
 
@@ -214,7 +223,8 @@ export default function RecommendScreen() {
       cancelRef.current = false;
       load();
       return () => {
-        cancelRef.current = true; // 진행 중인 비동기 루프 중단
+        cancelRef.current = true;
+        setInputVal("");
         setQ("");
         setIngredientGroups([]);
       };
@@ -246,8 +256,14 @@ export default function RecommendScreen() {
     if (keyword)
       arr = arr.filter((x) => x.name.toLowerCase().includes(keyword));
 
-    const maxMin = timePreset === "60+" ? Infinity : parseInt(timePreset, 10);
-    arr = arr.filter((x) => (x.cookingTime ?? 0) <= maxMin);
+    if (timePreset !== "ALL") {
+      if (timePreset === "60+") {
+        arr = arr.filter((x) => (x.cookingTime ?? 0) >= 60);
+      } else {
+        const maxMin = parseInt(timePreset, 10);
+        arr = arr.filter((x) => (x.cookingTime ?? 0) <= maxMin);
+      }
+    }
 
     if (cuisineFilter !== "ALL")
       arr = arr.filter((x) => x.cuisineType === cuisineFilter);
@@ -257,9 +273,57 @@ export default function RecommendScreen() {
     );
   }, [computed, cuisineFilter, q, timePreset]);
 
+  const toggleSearchBlogSave = useCallback(async (blog: BlogSearchResult) => {
+    const key = blog.link;
+    setSavingSearchBlog(key);
+    try {
+      if (savedSearchBlogs.has(key)) {
+        await api.delete("/saved-recipes/by-name", { params: { name: blog.title } });
+        setSavedSearchBlogs((prev) => { const next = new Set(prev); next.delete(key); return next; });
+      } else {
+        await api.post("/saved-recipes", {
+          recipeName: blog.title,
+          imageUrl: blog.imageUrl ?? null,
+          sourceType: "BLOG",
+          sourceUrl: blog.link,
+          ingredients: null,
+        });
+        setSavedSearchBlogs((prev) => new Set([...prev, key]));
+      }
+    } catch {}
+    finally { setSavingSearchBlog(null); }
+  }, [savedSearchBlogs]);
+
+  // 검색어 있을 때 블로그 검색
+  useEffect(() => {
+    const keyword = q.trim();
+    if (!keyword) {
+      setBlogResults([]);
+      return;
+    }
+    let cancelled = false;
+    setBlogLoading(true);
+    api
+      .get<BlogSearchResult[]>("/recipes/naver-blog", {
+        params: { query: keyword },
+      })
+      .then((res) => {
+        if (!cancelled) setBlogResults(res.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setBlogResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setBlogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [q]);
+
   const activeFilterCount = useMemo(() => {
     let n = 0;
-    if (timePreset !== "30") n++;
+    if (timePreset !== "ALL") n++;
     if (cuisineFilter !== "ALL") n++;
     return n;
   }, [timePreset, cuisineFilter]);
@@ -285,7 +349,6 @@ export default function RecommendScreen() {
                   <ActivityIndicator size="small" color={THEME.brand} />
                 )}
               </View>
-              <Text style={styles.meta}>식품의약품안전처 레시피 DB</Text>
             </View>
 
             {/* 에러 */}
@@ -368,7 +431,11 @@ export default function RecommendScreen() {
             pressed && { opacity: 0.85 },
           ]}
         >
-          <MaterialIcons name="search" size={20} color={showSearch ? THEME.brand : THEME.text} />
+          <MaterialIcons
+            name="search"
+            size={20}
+            color={showSearch ? THEME.brand : THEME.text}
+          />
         </Pressable>
         <View>
           <Pressable
@@ -379,14 +446,18 @@ export default function RecommendScreen() {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <MaterialIcons name="tune" size={20} color={filterOpen ? THEME.brand : THEME.text} />
+            <MaterialIcons
+              name="tune"
+              size={20}
+              color={filterOpen ? THEME.brand : THEME.text}
+            />
           </Pressable>
           {activeFilterCount > 0 && <View style={styles.badgeDot} />}
         </View>
         {activeFilterCount > 0 && (
           <Pressable
             onPress={() => {
-              setTimePreset("30");
+              setTimePreset("ALL");
               setCuisineFilter("ALL");
             }}
             style={({ pressed }) => [
@@ -406,15 +477,20 @@ export default function RecommendScreen() {
         <View style={styles.inlineSearch}>
           <Text style={styles.searchIconText}>⌕</Text>
           <TextInput
-            value={q}
-            onChangeText={setQ}
-            placeholder="요리 검색"
+            value={inputVal}
+            onChangeText={setInputVal}
+            onSubmitEditing={() => setQ(inputVal.trim())}
+            returnKeyType="search"
+            placeholder="요리 검색 후 엔터"
             placeholderTextColor="rgba(31,41,55,0.45)"
             style={styles.searchInput}
             autoFocus
           />
-          {q.length > 0 && (
-            <Pressable onPress={() => setQ("")} style={styles.clearBtn}>
+          {inputVal.length > 0 && (
+            <Pressable
+              onPress={() => { setInputVal(""); setQ(""); }}
+              style={styles.clearBtn}
+            >
               <Text style={{ color: THEME.muted, fontWeight: "700" }}>×</Text>
             </Pressable>
           )}
@@ -426,9 +502,10 @@ export default function RecommendScreen() {
         <View style={styles.filterPanel}>
           <View style={styles.filterRow}>
             <Text style={styles.filterLabel}>시간</Text>
-            {(["15", "30", "45", "60+"] as const).map((v) => {
+            {(["ALL", "15", "30", "45", "60+"] as const).map((v) => {
               const active = timePreset === v;
-              const label = v === "60+" ? "1시간+" : `${v}분`;
+              const label =
+                v === "ALL" ? "전체" : v === "60+" ? "1시간+" : `${v}분 이내`;
               return (
                 <Pressable
                   key={v}
@@ -489,10 +566,23 @@ export default function RecommendScreen() {
         </View>
       ) : null}
 
-      <View style={styles.sectionHead}>
-        <Text style={styles.h3}>오늘의 추천</Text>
-        <Text style={styles.meta}>탭 이동 시 자동 갱신</Text>
-      </View>
+      {/* 검색 중일 때는 임박재료·오늘의 추천 숨기고, 식약처 결과 헤딩만 표시 */}
+      {q.trim() ? (
+        filtered.length > 0 && (
+          <View style={styles.sectionHead}>
+            <Text style={styles.h3}>식약처 레시피</Text>
+            <Text style={styles.meta}>&ldquo;{q}&rdquo; 검색 결과</Text>
+          </View>
+        )
+      ) : (
+        <>
+          {CrawledSection}
+          <View style={styles.sectionHead}>
+            <Text style={styles.h3}>오늘의 추천</Text>
+            <Text style={styles.meta}>탭 이동 시 자동 갱신</Text>
+          </View>
+        </>
+      )}
     </View>
   );
 
@@ -508,7 +598,63 @@ export default function RecommendScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
         ListHeaderComponent={Header}
-        ListFooterComponent={CrawledSection}
+        ListFooterComponent={
+          q.trim() ? (
+            <View style={{ paddingBottom: 8 }}>
+              {blogResults.length > 0 && (
+                <>
+                  <View style={styles.sectionHead}>
+                    <Text style={styles.h3}>블로그 레시피</Text>
+                    <Text style={styles.meta}>&ldquo;{q}&rdquo; 검색 결과</Text>
+                  </View>
+                  {blogResults.map((blog, i) => (
+                    <View key={i} style={styles.blogRow}>
+                      {blog.imageUrl ? (
+                        <Image
+                          source={{ uri: proxyImageUrl(blog.imageUrl)! }}
+                          style={styles.blogThumb}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View
+                          style={[styles.blogThumb, styles.blogThumbPlaceholder]}
+                        >
+                          <MaterialIcons
+                            name="article"
+                            size={24}
+                            color={THEME.muted}
+                          />
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.blogTitle} numberOfLines={2}>
+                          {blog.title}
+                        </Text>
+                        <Text style={styles.blogMeta} numberOfLines={1}>
+                          {blog.bloggername}
+                        </Text>
+                        <Text style={styles.blogDesc} numberOfLines={2}>
+                          {blog.description}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => toggleSearchBlogSave(blog)}
+                        disabled={savingSearchBlog === blog.link}
+                        hitSlop={8}
+                      >
+                        <MaterialIcons
+                          name={savedSearchBlogs.has(blog.link) ? "bookmark" : "bookmark-border"}
+                          size={22}
+                          color={savedSearchBlogs.has(blog.link) ? THEME.brand : THEME.muted}
+                        />
+                      </Pressable>
+                    </View>
+                  ))}
+                </>
+              )}
+            </View>
+          ) : null
+        }
         contentContainerStyle={{ paddingBottom: 110 }}
         numColumns={2}
         columnWrapperStyle={{ paddingHorizontal: 14, gap: 12 }}
@@ -542,13 +688,6 @@ export default function RecommendScreen() {
                 pressed && { opacity: 0.88 },
               ]}
             >
-              {!!item.imageUrl && (
-                <Image
-                  source={{ uri: item.imageUrl }}
-                  style={styles.cardThumb}
-                  resizeMode="cover"
-                />
-              )}
               <View style={{ padding: 10, flex: 1 }}>
                 <View style={styles.rowBetween}>
                   <Text style={styles.cardTitle} numberOfLines={2}>
@@ -596,26 +735,32 @@ export default function RecommendScreen() {
           );
         }}
         ListEmptyComponent={
-          <View style={[styles.empty, { marginHorizontal: 14 }]}>
-            <View style={styles.emptyBubble}>
-              <Text style={{ fontSize: 16 }}>👩‍🍳</Text>
+          q.trim() ? (
+            blogLoading ? (
+              <ActivityIndicator style={{ marginVertical: 20 }} color={THEME.brand} />
+            ) : null
+          ) : (
+            <View style={[styles.empty, { marginHorizontal: 14 }]}>
+              <View style={styles.emptyBubble}>
+                <Text style={{ fontSize: 16 }}>👩‍🍳</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.emptyTitle}>추천 결과가 없어</Text>
+                <Text style={styles.emptyText}>
+                  재고를 먼저 등록하거나 필터를 완화해봐.
+                </Text>
+              </View>
+              <Pressable
+                onPress={load}
+                style={({ pressed }) => [
+                  styles.btnGhost,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <Text style={styles.btnGhostText}>새로고침</Text>
+              </Pressable>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>추천 결과가 없어</Text>
-              <Text style={styles.emptyText}>
-                재고를 먼저 등록하거나 필터를 완화해봐.
-              </Text>
-            </View>
-            <Pressable
-              onPress={load}
-              style={({ pressed }) => [
-                styles.btnGhost,
-                pressed && { opacity: 0.9 },
-              ]}
-            >
-              <Text style={styles.btnGhostText}>새로고침</Text>
-            </Pressable>
-          </View>
+          )
         }
       />
     </SafeAreaView>
@@ -782,6 +927,10 @@ const styles: any = {
     height: 100,
     backgroundColor: "rgba(127,183,126,0.12)",
   },
+  cardThumbPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
   rowBetween: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -850,6 +999,32 @@ const styles: any = {
   },
   emptyTitle: { fontSize: 14, fontWeight: "900", color: THEME.text },
   emptyText: { marginTop: 2, fontSize: 12, color: THEME.muted, lineHeight: 16 },
+
+  blogRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginHorizontal: 14,
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  blogThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: "rgba(127,183,126,0.12)",
+  },
+  blogThumbPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  blogTitle: { fontSize: 14, fontWeight: "800", color: THEME.text, lineHeight: 19 },
+  blogMeta: { marginTop: 2, fontSize: 11, color: THEME.brand, fontWeight: "700" },
+  blogDesc: { marginTop: 2, fontSize: 11, color: THEME.muted, lineHeight: 15 },
 
   // 만개의 레시피 가로 스크롤 카드
   crawlCard: {

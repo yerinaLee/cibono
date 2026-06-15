@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Linking,
   Pressable,
   Text,
@@ -12,7 +13,7 @@ import {
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { api } from "../src/api/client";
+import { api, proxyImageUrl } from "../src/api/client";
 
 type SavedRecipe = {
   id: number;
@@ -149,6 +150,25 @@ export default function SavedRecipesScreen() {
                 onPress={() => handlePress(item)}
                 style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}
               >
+                {item.imageUrl ? (
+                  <Image
+                    source={{
+                      uri: item.sourceType === "BLOG"
+                        ? proxyImageUrl(item.imageUrl)!
+                        : item.imageUrl,
+                    }}
+                    style={styles.thumb}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[styles.thumb, styles.thumbPlaceholder]}>
+                    <MaterialIcons
+                      name={item.sourceType === "BLOG" ? "article" : "restaurant"}
+                      size={22}
+                      color={THEME.muted}
+                    />
+                  </View>
+                )}
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemName} numberOfLines={1}>{item.recipeName}</Text>
                   {!!item.ingredients && (
@@ -211,7 +231,15 @@ const styles: any = {
   row: {
     flexDirection: "row", alignItems: "center", gap: 12,
     backgroundColor: "#FFFFFF",
-    borderRadius: 14, borderWidth: 1, borderColor: THEME.border, padding: 14,
+    borderRadius: 14, borderWidth: 1, borderColor: THEME.border, padding: 10,
+  },
+  thumb: {
+    width: 60, height: 60, borderRadius: 10,
+    backgroundColor: "rgba(127,183,126,0.12)", flexShrink: 0,
+  },
+  thumbPlaceholder: {
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: THEME.border,
   },
   itemName: { fontSize: 15, fontWeight: "800", color: THEME.text },
   itemMeta: { fontSize: 12, color: THEME.muted, marginTop: 3 },

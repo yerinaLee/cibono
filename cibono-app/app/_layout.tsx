@@ -1,10 +1,56 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { api } from '../src/api/client';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+// expo-notifications는 네이티브 빌드에서만 동작 — 동적 import로 번들 에러 방지
+let Notifications: typeof import('expo-notifications') | null = null;
+let Device: typeof import('expo-device') | null = null;
+try {
+  Notifications = require('expo-notifications');
+  Device = require('expo-device');
+  Notifications?.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch {
+  console.log('[Push] expo-notifications 로드 실패 (개발 환경에서는 정상)');
+}
+
+async function registerForPushNotifications(): Promise<string | null> {
+  if (!Notifications || !Device) return null;
+  if (!Device.isDevice) return null;
+  if (Platform.OS !== 'android') return null;
+
+  await Notifications.setNotificationChannelAsync('dinner', {
+    name: '저녁 메뉴 추천',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#7FB77E',
+  });
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+  if (finalStatus !== 'granted') return null;
+
+  const tokenData = await Notifications.getExpoPushTokenAsync({
+    projectId: '48edf5aa-9e69-4da6-80f2-7c6a387db8d9',
+  });
+  return tokenData.data;
+}
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -12,6 +58,37 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const navigatedRef = useRef(false);
+
+  // 푸시 토큰 등록
+  useEffect(() => {
+    registerForPushNotifications().then((token) => {
+      if (!token) return;
+      console.log('[Push] Expo 토큰:', token);
+      api.post('/admin/notifications/register-token', { token }).catch((e) =>
+        console.warn('[Push] 토큰 등록 실패:', e.message)
+      );
+    });
+  }, []);
+
+  // 알림 탭 → 레시피 화면 이동
+  useEffect(() => {
+    if (!Notifications) return;
+
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (navigatedRef.current) return;
+      const recipeName = response.notification.request.content.data?.recipeName;
+      if (recipeName) {
+        navigatedRef.current = true;
+        setTimeout(() => {
+          router.push({ pathname: '/recipe-detail', params: { name: String(recipeName) } });
+        }, 300);
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -20,6 +97,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen name="recipe-detail" options={{ headerShown: false }} />
+          <Stack.Screen name="admin-notifications" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

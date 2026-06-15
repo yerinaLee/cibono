@@ -41,7 +41,9 @@ export default function IngredientRecipesScreen() {
     setLoading(true);
     setError(false);
     api
-      .get<RecipeCard[]>("/recipes/search-by-ingredient", { params: { ingredient } })
+      .get<RecipeCard[]>("/recipes/search-by-ingredient", {
+        params: { ingredient },
+      })
       .then((res) => setCards(res.data ?? []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -88,13 +90,23 @@ export default function IngredientRecipesScreen() {
       )}
 
       {!loading && cards.length > 0 && (
-        <ScrollView contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: 40 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: 40 }}
+        >
           <Text style={styles.countText}>{cards.length}개의 레시피</Text>
           {cards.map((card, i) => (
             <Pressable
               key={i}
-              onPress={() => router.push({ pathname: "/recipe-detail", params: { name: card.name } })}
-              style={({ pressed }) => [styles.card, pressed && { opacity: 0.88 }]}
+              onPress={() =>
+                router.push({
+                  pathname: "/recipe-detail",
+                  params: { name: card.name },
+                })
+              }
+              style={({ pressed }) => [
+                styles.card,
+                pressed && { opacity: 0.88 },
+              ]}
             >
               {!!card.imageUrl && (
                 <Image
@@ -104,7 +116,9 @@ export default function IngredientRecipesScreen() {
                 />
               )}
               <View style={styles.cardBody}>
-                <Text style={styles.cardTitle} numberOfLines={2}>{card.name}</Text>
+                <Text style={styles.cardTitle} numberOfLines={2}>
+                  {card.name}
+                </Text>
                 {card.ingredients?.length > 0 && (
                   <Text style={styles.cardIngs} numberOfLines={2}>
                     {card.ingredients.slice(0, 5).join(" · ")}
@@ -130,22 +144,37 @@ const styles: any = {
     backgroundColor: THEME.bg,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: "center", justifyContent: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.85)",
-    borderWidth: 1, borderColor: THEME.border,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   backIcon: { fontSize: 18, color: THEME.text },
   headerTitle: { fontSize: 17, fontWeight: "900", color: THEME.text },
   headerSub: { fontSize: 11, color: THEME.muted, marginTop: 1 },
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, padding: 32 },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: 32,
+  },
   loadingText: { fontSize: 14, color: THEME.muted },
   errorText: { fontSize: 14, color: THEME.danger, fontWeight: "700" },
   emptyTitle: { fontSize: 16, fontWeight: "900", color: THEME.text },
   emptyDesc: { fontSize: 13, color: THEME.muted },
 
-  countText: { fontSize: 12, color: THEME.muted, fontWeight: "700", marginBottom: 2 },
+  countText: {
+    fontSize: 12,
+    color: THEME.muted,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
 
   card: {
     backgroundColor: "rgba(255,255,255,0.90)",
