@@ -85,8 +85,6 @@ public class FoodSafetyApiService {
             }
 
             RecipeDto.RecipeDetail detail = parseDetail(row);
-            log.info("[FoodSafety] getDetail '{}' → 매칭: '{}', 재료 {}개, 조리순서 {}단계",
-                name, detail.title(), detail.ingredients().size(), detail.steps().size());
             return detail;
         } catch (Exception e) {
             log.warn("[FoodSafety] getDetail({}) 실패: {}", name, e.getMessage());
