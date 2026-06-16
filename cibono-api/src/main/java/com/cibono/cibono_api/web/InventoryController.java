@@ -121,9 +121,8 @@ public class InventoryController {
     // ── OCR 스캔 ──────────────────────────────────────────
     @PostMapping("/inventory/scan")
     public List<ScannedItem> scan(@RequestBody ScanRequest req) {
-        String ocrText = tesseractOcr.extractText(req.imageBase64(), req.mimeType());
-        List<ScannedItem> result = geminiService.parseReceiptText(ocrText);
-        log.info("=== Gemini 파싱 결과 ({}) ===\n{}", result.size(), result);
+        List<ScannedItem> result = geminiService.scanReceipt(req.imageBase64(), req.mimeType());
+        log.info("=== Gemini Vision 결과 ({}) ===\n{}", result.size(), result);
         return result;
     }
 

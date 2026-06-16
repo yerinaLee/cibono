@@ -56,10 +56,10 @@ export default function AlertsScreen() {
     setRefreshing(true);
     try {
       const [alertsRes, dealsRes] = await Promise.all([
-        api.get<AlertEvent[]>("/alerts"),
+        api.get<{ data: AlertEvent[] }>("/alerts"),
         api.get<Deal[]>("/deals"),
       ]);
-      setItems(alertsRes.data ?? []);
+      setItems(alertsRes.data?.data ?? []);
       const map: Record<number, Deal> = {};
       for (const d of dealsRes.data ?? []) map[d.id] = d;
       setDealMap(map);
@@ -84,7 +84,7 @@ export default function AlertsScreen() {
     async (id: number) => {
       setError("");
       try {
-        await api.post(`/alerts/seen/${id}`);
+        await api.patch(`/alerts/${id}/read`);
         await load();
       } catch (e: any) {
         setError(explainNetworkHint(e));

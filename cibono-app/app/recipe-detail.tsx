@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { api } from "../src/api/client";
+import { api, proxyImageUrl } from "../src/api/client";
 
 type RecipeDetail = {
   title: string;
@@ -70,6 +70,9 @@ export default function RecipeDetailScreen() {
   // 블로그 저장 상태 (link → saved)
   const [savedBlogs, setSavedBlogs] = useState<Set<string>>(new Set());
   const [savingBlog, setSavingBlog] = useState<string | null>(null);
+
+  // 블로그 이미지 로드 실패 추적
+  const [blogImgErrors, setBlogImgErrors] = useState<Set<string>>(new Set());
 
   function toggleIng(ing: string) {
     setSelectedIngs((prev) => {
@@ -160,7 +163,11 @@ export default function RecipeDetailScreen() {
     setBlogsLoading(true);
     api
       .get<BlogItem[]>("/recipes/naver-blog", { params: { query: name } })
-      .then((res) => setBlogs(res.data ?? []))
+      .then((res) => {
+        const data = res.data ?? [];
+        console.log("[Blog] 받은 목록:", data.map((b) => ({ title: b.title, imageUrl: b.imageUrl })));
+        setBlogs(data);
+      })
       .catch(() => {})
       .finally(() => setBlogsLoading(false));
   }, [name]);
@@ -286,12 +293,19 @@ export default function RecipeDetailScreen() {
                       onPress={() => Linking.openURL(blog.link)}
                       style={({ pressed }) => [styles.blogRow, pressed && { opacity: 0.82 }]}
                     >
-                      {!!blog.imageUrl && (
+                      {blog.imageUrl && !blogImgErrors.has(blog.link) ? (
                         <Image
-                          source={{ uri: blog.imageUrl }}
+                          source={{ uri: proxyImageUrl(blog.imageUrl)! }}
                           style={styles.blogThumb}
                           resizeMode="cover"
+                          onError={() =>
+                            setBlogImgErrors((prev) => new Set([...prev, blog.link]))
+                          }
                         />
+                      ) : (
+                        <View style={[styles.blogThumb, styles.blogThumbPlaceholder]}>
+                          <MaterialIcons name="article" size={28} color={THEME.muted} />
+                        </View>
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={styles.blogTitle} numberOfLines={2}>{blog.title}</Text>
@@ -429,6 +443,10 @@ const styles: any = {
   blogThumb: {
     width: 72, height: 72, borderRadius: 10,
     backgroundColor: "rgba(127,183,126,0.12)", flexShrink: 0,
+  },
+  blogThumbPlaceholder: {
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: THEME.border,
   },
   blogTitle: { fontSize: 14, fontWeight: "900", color: THEME.text, lineHeight: 20, marginBottom: 2 },
   blogDesc: { fontSize: 12, color: THEME.muted, lineHeight: 18 },

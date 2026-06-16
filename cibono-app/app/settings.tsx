@@ -1,3 +1,4 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
@@ -47,6 +48,20 @@ export default function SettingsScreen() {
               식재료 관리 · 특가 알림 · 레시피 추천
             </Text>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>관리자</Text>
+          <Pressable
+            onPress={() => router.push("/admin-notifications")}
+            style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="notifications-active" size={16} color={THEME.brand} />
+              <Text style={styles.rowLabel}>알림 관리</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={18} color={THEME.muted} />
+          </Pressable>
         </View>
 
         <View style={styles.section}>

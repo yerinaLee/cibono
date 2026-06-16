@@ -1,7 +1,7 @@
 # Cibono 프로젝트 작업 로그
 
 > AI 대화 간 컨텍스트 공유용. 굵직한 작업 흐름만 기록.
-> 업데이트: 2026-06-10 (6차)
+> 업데이트: 2026-06-15 (8차)
 
 ---
 
@@ -250,11 +250,61 @@
 
 ---
 
+### Recommend + Saved-Recipes 고도화 (2026-06-15, 7차)
+
+#### recommend.tsx
+
+- **레이아웃 순서 변경** — 임박재료 섹션(`CrawledSection`)을 `ListFooterComponent`에서 `ListHeaderComponent` 안으로 이동, 오늘의 추천 그리드보다 위에 표시
+- **오늘의 추천 카드 이미지 제거** — 카드에서 썸네일 이미지/플레이스홀더 블록 제거, 메뉴명·뱃지·재료·시간 텍스트만 표시
+- **검색 동작 변경 (즉시 → 엔터 트리거)**
+  - `inputVal` 상태 분리 — 타이핑은 `inputVal`에만 반영
+  - 엔터(`onSubmitEditing`) 시 `q`(실제 검색 키)를 세팅 → DB 필터링 + 블로그 검색 동시 실행
+  - × 버튼: `inputVal`·`q` 동시 초기화
+  - placeholder 텍스트 "요리 검색" → "요리 검색 후 엔터"
+- **검색 시 전용 뷰** — 검색어 있을 때 임박재료 섹션·오늘의 추천 숨김, 아래 두 섹션만 노출:
+  1. **식약처 레시피** — `filtered` 결과를 2열 그리드로 상단 표시 (결과 있을 때 헤딩 표시)
+  2. **블로그 레시피** — `/recipes/naver-blog?query=...` 결과를 단일 컬럼 리스트로 하단 표시
+- **블로그 검색 결과 UI**
+  - 썸네일(`proxyImageUrl` 경유, Naver CDN 핫링크 우회) + 제목 + 블로거명 + 설명
+  - 북마크 저장 버튼 (bookmark-border / bookmark 아이콘, 저장 상태 토글)
+  - `savedSearchBlogs: Set<string>`, `savingSearchBlog: string | null` 상태 관리
+  - 행 전체 Pressable 제거 (외부링크 아이콘도 제거), 저장 버튼만 인터랙션
+
+#### saved-recipes.tsx
+
+- **블로그 이미지 프록시 적용** — `sourceType === "BLOG"` 일 때 `proxyImageUrl(item.imageUrl)` 사용
+  - Naver CDN(`blogthumb.pstatic.net`) 핫링크 차단 우회 → 블로그 썸네일 표시 가능
+
+---
+
+### 로컬 개발 환경 전환 + 푸시 알림 + OCR 개선 (2026-06-15, 8차)
+
+#### 로컬 빌드 환경 (expo run:android)
+- EAS 클라우드 빌드 → `npx expo run:android` 로컬 빌드로 전환 (빌드 시간 단축)
+- `JAVA_HOME=C:\Program Files\Android\Android Studio\jbr` 설정 필요 (cmd 세션마다)
+- USB 디버깅 + `adb reverse tcp:8081 tcp:8081` 으로 Metro 터널 연결
+- EAS APK ↔ 로컬 debug APK 서명키 불일치 → 기존 앱 삭제 후 재설치 필요
+
+#### 푸시 알림 (FCM) 수정
+- **Expo push URL 오류 수정** — `EXPO_PUSH_URL` 을 잘못된 경로에서 공식 경로로 수정
+  - `https://exp.host/--/exponent-push-notifications/v2/push/send` → `https://exp.host/--/api/v2/push/send`
+- **FCM V1 자격증명 등록** — EAS 기존 Legacy 키 → Firebase 서비스 계정 JSON으로 교체
+  - `eas credentials` → Android → Google Service Account → `Manage your Google Service Account Key for Push Notifications (FCM V1)` → Firebase Admin SDK JSON 업로드
+  - Firebase Console → 프로젝트 설정 → 서비스 계정 → 새 비공개 키 생성
+- **Expo 응답 로깅 추가** — `DinnerNotificationScheduler.sendExpoPush()`에 응답 바디 로그 추가
+
+#### 영수증 OCR 개선
+- **Tesseract → Gemini Vision 직접 호출로 전환**
+  - 기존: `POST /inventory/scan` → TesseractOcrService → parseReceiptText() (2단계)
+  - 변경: `POST /inventory/scan` → GeminiService.scanReceipt() (이미지 직접 Vision API)
+  - `InventoryController.scan()` 에서 `tesseractOcr.extractText()` 제거, `geminiService.scanReceipt()` 직접 호출
+  - 결과: 한국어 열영수증 인식 정확도 대폭 향상
+
+---
+
 ## 현재 진행 중
 
-- [ ] 새 APK 빌드 후 핸드폰에 설치 (`npx eas-cli build -p android --profile preview`)
 - [ ] 식약처 API 배치 수집 or 레시피 데이터셋 대량 추가
-- [ ] 영수증 OCR 정확도 높이기 (Gemini API 프롬프트 튜닝)
 
 ---
 
