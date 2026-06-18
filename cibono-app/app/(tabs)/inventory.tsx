@@ -2,7 +2,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useMemo, useState } from "react";
 
-import AppHeader from "../../components/AppHeader";
 import {
   ActivityIndicator,
   FlatList,
@@ -16,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type Inventory = {
@@ -54,21 +54,21 @@ type SortKey = "PURCHASED_DESC" | "EXP_ASC" | "EXP_DESC" | "QTY_DESC";
 type StorageFilter = "ALL" | "FRIDGE" | "FREEZER" | "PANTRY";
 type CategoryFilter =
   | "ALL"
-  | "채소/과일"
-  | "육류/계란"
-  | "해산물"
-  | "우유/유제품"
-  | "밀키트"
-  | "기타";
+  | "🥬채소/과일"
+  | "🥩육류/계란"
+  | "🐟해산물"
+  | "🥛우유/유제품"
+  | "🍱밀키트"
+  | "📦기타";
 
 const CATEGORY_FILTERS: CategoryFilter[] = [
   "ALL",
-  "채소/과일",
-  "육류/계란",
-  "해산물",
-  "우유/유제품",
-  "밀키트",
-  "기타",
+  "🥬채소/과일",
+  "🥩육류/계란",
+  "🐟해산물",
+  "🥛우유/유제품",
+  "🍱밀키트",
+  "📦기타",
 ];
 
 const UNIT_PRESETS = ["개", "병", "묶음", "판"];
@@ -184,26 +184,22 @@ function DateField({
         keyboardType="numeric"
         maxLength={10}
       />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginTop: 6 }}
+      <View
+        style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}
       >
-        <View style={{ flexDirection: "row", gap: 6 }}>
-          {DATE_PRESETS.map((p) => (
-            <Pressable
-              key={p.label}
-              onPress={() => onChange(addDays(p.days))}
-              style={({ pressed }) => [
-                styles.presetChip,
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <Text style={styles.presetChipText}>{p.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+        {DATE_PRESETS.map((p) => (
+          <Pressable
+            key={p.label}
+            onPress={() => onChange(addDays(p.days))}
+            style={({ pressed }) => [
+              styles.presetChip,
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <Text style={styles.presetChipText}>{p.label}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
@@ -264,47 +260,47 @@ function CategorySelector({
   return (
     <View style={styles.field}>
       <Text style={styles.label}>식재료 분류</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: "row", gap: 6 }}>
+      <View
+        style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 }}
+      >
+        <Pressable
+          onPress={() => onChange(null)}
+          style={({ pressed }) => [
+            styles.presetChip,
+            value === null && styles.presetChipActive,
+            pressed && { opacity: 0.8 },
+          ]}
+        >
+          <Text
+            style={[
+              styles.presetChipText,
+              value === null && styles.presetChipTextActive,
+            ]}
+          >
+            🧺 미분류
+          </Text>
+        </Pressable>
+        {categories.map((cat) => (
           <Pressable
-            onPress={() => onChange(null)}
+            key={cat.id}
+            onPress={() => onChange(cat.id)}
             style={({ pressed }) => [
               styles.presetChip,
-              value === null && styles.presetChipActive,
+              value === cat.id && styles.presetChipActive,
               pressed && { opacity: 0.8 },
             ]}
           >
             <Text
               style={[
                 styles.presetChipText,
-                value === null && styles.presetChipTextActive,
+                value === cat.id && styles.presetChipTextActive,
               ]}
             >
-              🧺 미분류
+              {categoryIcon(cat.name)} {cat.name}
             </Text>
           </Pressable>
-          {categories.map((cat) => (
-            <Pressable
-              key={cat.id}
-              onPress={() => onChange(cat.id)}
-              style={({ pressed }) => [
-                styles.presetChip,
-                value === cat.id && styles.presetChipActive,
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.presetChipText,
-                  value === cat.id && styles.presetChipTextActive,
-                ]}
-              >
-                {categoryIcon(cat.name)} {cat.name}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+        ))}
+      </View>
     </View>
   );
 }
@@ -327,6 +323,7 @@ export default function InventoryScreen() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("ALL");
 
   const [name, setName] = useState("");
+  const [nameFocused, setNameFocused] = useState(false);
   const [qty, setQty] = useState("1");
   const [unit, setUnit] = useState("개");
   const [storage, setStorage] = useState<"FRIDGE" | "FREEZER" | "PANTRY">(
@@ -572,7 +569,9 @@ export default function InventoryScreen() {
     setScanLoading(true);
     try {
       // Gemini Vision API — 이미지 직접 전송 (한국어 영수증 정확도 높음, 503 시 서버에서 retry)
-      const res = await api.post<{ itemName: string; quantity: number; unit: string }[]>(
+      const res = await api.post<
+        { itemName: string; quantity: number; unit: string }[]
+      >(
         "/inventory/scan",
         { imageBase64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" },
         { timeout: 90000 },
@@ -653,198 +652,223 @@ export default function InventoryScreen() {
     load,
   ]);
 
-  const Header = (
-    <View style={{ paddingBottom: 8 }}>
-      <AppHeader
-        title="Inventory"
-        subtitle="냉장고 재고(유통기한) 관리"
-        rightExtra={
-          <Pressable
-            onPress={() => setIsAddOpen(true)}
-            style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.85 }]}
-          >
-            <Text style={styles.btnPrimaryText}>재료 추가</Text>
-          </Pressable>
-        }
-      />
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: THEME.bg }}
+      edges={["bottom", "left", "right"]}
+    >
+      {/* ── 고정 헤더 (FlatList 밖) — horizontal ScrollView 너비 버그 방지 ── */}
+      <View style={styles.headerSection}>
+        <AppHeader title="냉장고" subtitle="냉장고 재고 관리" />
 
-      {/* 검색·필터·스캔 툴바 */}
-      <View style={styles.toolbar}>
-        <Pressable
-          onPress={() => setShowSearch((p) => !p)}
-          style={({ pressed }) => [
-            styles.iconCircle,
-            showSearch && styles.iconCircleActive,
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <MaterialIcons name="search" size={20} color={showSearch ? THEME.brand : THEME.text} />
-        </Pressable>
-        <View>
+        {/* 검색·필터·스캔·추가 툴바 */}
+        <View style={styles.toolbar}>
           <Pressable
-            onPress={() => setFilterOpen((p) => !p)}
+            onPress={() => setShowSearch((p) => !p)}
             style={({ pressed }) => [
               styles.iconCircle,
-              filterOpen && styles.iconCircleActive,
+              showSearch && styles.iconCircleActive,
               pressed && { opacity: 0.85 },
             ]}
           >
-            <MaterialIcons name="tune" size={20} color={filterOpen ? THEME.brand : THEME.text} />
+            <MaterialIcons
+              name="search"
+              size={20}
+              color={showSearch ? THEME.brand : THEME.text}
+            />
           </Pressable>
-          {activeFilterCount > 0 && <View style={styles.badgeDot} />}
-        </View>
-        <Pressable
-          onPress={() => { setIsScanOpen(true); pickAndScan(); }}
-          style={({ pressed }) => [styles.iconCircle, pressed && { opacity: 0.85 }]}
-        >
-          <MaterialIcons name="photo-camera" size={20} color={THEME.text} />
-        </Pressable>
-      </View>
-
-      {/* 카테고리 필터 — 항상 노출 (가로 스크롤) */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryRow}
-        style={{ marginTop: 8 }}
-      >
-        {CATEGORY_FILTERS.map((k) => (
+          <View>
+            <Pressable
+              onPress={() => setFilterOpen((p) => !p)}
+              style={({ pressed }) => [
+                styles.iconCircle,
+                filterOpen && styles.iconCircleActive,
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <MaterialIcons
+                name="tune"
+                size={20}
+                color={filterOpen ? THEME.brand : THEME.text}
+              />
+            </Pressable>
+            {activeFilterCount > 0 && <View style={styles.badgeDot} />}
+          </View>
           <Pressable
-            key={k}
-            onPress={() => setCategoryFilter(k)}
+            onPress={() => {
+              setIsScanOpen(true);
+              pickAndScan();
+            }}
             style={({ pressed }) => [
-              styles.categoryChip,
-              categoryFilter === k && styles.categoryChipActive,
-              pressed && { opacity: 0.9 },
+              styles.iconCircle,
+              pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={[styles.categoryChipText, categoryFilter === k && styles.categoryChipTextActive]}>
-              {k === "ALL" ? "전체" : `${categoryIcon(k)} ${k}`}
-            </Text>
+            <MaterialIcons name="photo-camera" size={20} color={THEME.text} />
           </Pressable>
-        ))}
-      </ScrollView>
-
-      {/* 인라인 검색창 */}
-      {showSearch && (
-        <View style={styles.inlineSearch}>
-          <Text style={styles.searchIconText}>⌕</Text>
-          <TextInput
-            value={q}
-            onChangeText={setQ}
-            placeholder="재고 검색 (예: 우유, 대파)"
-            placeholderTextColor="rgba(31,41,55,0.45)"
-            style={styles.searchInput}
-            autoFocus
-          />
-          {q.length > 0 && (
-            <Pressable onPress={() => setQ("")} style={styles.clearBtn}>
-              <Text style={{ color: THEME.muted, fontWeight: "700" }}>×</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-
-      {/* 필터 패널 */}
-      {filterOpen && (
-        <View style={styles.filterPanel}>
-          <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>정렬</Text>
-            {(
-              ["PURCHASED_DESC", "EXP_ASC", "EXP_DESC", "QTY_DESC"] as const
-            ).map((k) => (
-              <Pressable
-                key={k}
-                onPress={() => setSortKey(k)}
-                style={({ pressed }) => [
-                  styles.filterChip,
-                  sortKey === k && styles.filterChipActive,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    sortKey === k && styles.filterChipTextActive,
-                  ]}
-                >
-                  {sortLabel(k)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>보관</Text>
-            {(["ALL", "FRIDGE", "FREEZER", "PANTRY"] as const).map((k) => (
-              <Pressable
-                key={k}
-                onPress={() => setStorageFilter(k)}
-                style={({ pressed }) => [
-                  styles.filterChip,
-                  storageFilter === k && styles.filterChipActive,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    storageFilter === k && styles.filterChipTextActive,
-                  ]}
-                >
-                  {k === "ALL" ? "전체" : storageLabel(k)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-
-      {/* 유통기한 임박 알림 배너 */}
-      {expiringItems.length > 0 && !alertDismissed && (
-        <View style={[styles.alertBanner, { marginTop: 10 }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.alertTitle}>
-              ⚠️ 유통기한 임박 재료 {expiringItems.length}개
-            </Text>
-            <Text style={styles.alertBody} numberOfLines={2}>
-              {expiringItems
-                .slice(0, 4)
-                .map((x) => {
-                  const d = daysUntil(x.expiresAt)!;
-                  const tag = d < 0 ? `D+${Math.abs(d)}` : d === 0 ? "D-0" : `D-${d}`;
-                  return `${x.itemName} (${tag})`;
-                })
-                .join("  ·  ")}
-              {expiringItems.length > 4 ? `  외 ${expiringItems.length - 4}개` : ""}
-            </Text>
-          </View>
+          <View style={{ flex: 1 }} />
           <Pressable
-            onPress={() => setAlertDismissed(true)}
-            hitSlop={10}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, paddingLeft: 10 }]}
+            onPress={() => setIsAddOpen(true)}
+            style={({ pressed }) => [
+              styles.iconCircleAdd,
+              pressed && { opacity: 0.85 },
+            ]}
           >
-            <MaterialIcons name="close" size={18} color="#92400E" />
+            <MaterialIcons name="add" size={22} color={THEME.brandInk} />
           </Pressable>
         </View>
-      )}
-    </View>
-  );
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }} edges={["bottom", "left", "right"]}>
+        {/* 카테고리 필터 — horizontal FlatList + 오른쪽 페이드 힌트 */}
+        <View style={{ marginTop: 8 }}>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={CATEGORY_FILTERS}
+            keyExtractor={(k) => k}
+            contentContainerStyle={{ gap: 6, paddingBottom: 4 }}
+            scrollEventThrottle={16}
+            renderItem={({ item: k }) => (
+              <Pressable
+                onPress={() => setCategoryFilter(k)}
+                style={({ pressed }) => [
+                  styles.categoryChip,
+                  categoryFilter === k && styles.categoryChipActive,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    categoryFilter === k && styles.categoryChipTextActive,
+                  ]}
+                >
+                  {k === "ALL" ? "전체" : k}
+                </Text>
+              </Pressable>
+            )}
+          />
+        </View>
+
+        {/* 인라인 검색창 */}
+        {showSearch && (
+          <View style={styles.inlineSearch}>
+            <Text style={styles.searchIconText}>⌕</Text>
+            <TextInput
+              value={q}
+              onChangeText={setQ}
+              placeholder="재고 검색 (예: 우유, 대파)"
+              placeholderTextColor="rgba(31,41,55,0.45)"
+              style={styles.searchInput}
+              autoFocus
+            />
+            {q.length > 0 && (
+              <Pressable onPress={() => setQ("")} style={styles.clearBtn}>
+                <Text style={{ color: THEME.muted, fontWeight: "700" }}>×</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
+        {/* 필터 패널 */}
+        {filterOpen && (
+          <View style={styles.filterPanel}>
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>정렬</Text>
+              {(
+                ["PURCHASED_DESC", "EXP_ASC", "EXP_DESC", "QTY_DESC"] as const
+              ).map((k) => (
+                <Pressable
+                  key={k}
+                  onPress={() => setSortKey(k)}
+                  style={({ pressed }) => [
+                    styles.filterChip,
+                    sortKey === k && styles.filterChipActive,
+                    pressed && { opacity: 0.9 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      sortKey === k && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {sortLabel(k)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>보관</Text>
+              {(["ALL", "FRIDGE", "FREEZER", "PANTRY"] as const).map((k) => (
+                <Pressable
+                  key={k}
+                  onPress={() => setStorageFilter(k)}
+                  style={({ pressed }) => [
+                    styles.filterChip,
+                    storageFilter === k && styles.filterChipActive,
+                    pressed && { opacity: 0.9 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      storageFilter === k && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {k === "ALL" ? "전체" : storageLabel(k)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {error ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        {expiringItems.length > 0 && !alertDismissed && (
+          <View style={[styles.alertBanner, { marginTop: 10 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertTitle}>
+                ⚠️ 유통기한 임박 재료 {expiringItems.length}개
+              </Text>
+              <Text style={styles.alertBody} numberOfLines={2}>
+                {expiringItems
+                  .slice(0, 4)
+                  .map((x) => {
+                    const d = daysUntil(x.expiresAt)!;
+                    const tag =
+                      d < 0 ? `D+${Math.abs(d)}` : d === 0 ? "D-0" : `D-${d}`;
+                    return `${x.itemName} (${tag})`;
+                  })
+                  .join("  ·  ")}
+                {expiringItems.length > 4
+                  ? `  외 ${expiringItems.length - 4}개`
+                  : ""}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setAlertDismissed(true)}
+              hitSlop={10}
+              style={({ pressed }) => [
+                { opacity: pressed ? 0.6 : 1, paddingLeft: 10 },
+              ]}
+            >
+              <MaterialIcons name="close" size={18} color="#92400E" />
+            </Pressable>
+          </View>
+        )}
+      </View>
+
       <FlatList
         data={filtered}
         keyExtractor={(x) => String(x.id)}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
-        ListHeaderComponent={Header}
         contentContainerStyle={{
           paddingBottom: 110,
           paddingHorizontal: 14,
@@ -857,10 +881,13 @@ export default function InventoryScreen() {
           const label = ddayLabel(d);
 
           const borderLeftColor =
-            d === null ? THEME.border :
-            d < 0 ? THEME.danger :
-            d <= 2 ? "#F2C94C" :
-            THEME.border;
+            d === null
+              ? THEME.border
+              : d < 0
+                ? THEME.danger
+                : d <= 2
+                  ? "#F2C94C"
+                  : THEME.border;
 
           return (
             <Pressable
@@ -872,7 +899,11 @@ export default function InventoryScreen() {
               delayLongPress={500}
               style={({ pressed }) => [
                 styles.card,
-                { borderLeftWidth: 3, borderLeftColor, opacity: pressed ? 0.85 : 1 },
+                {
+                  borderLeftWidth: 3,
+                  borderLeftColor,
+                  opacity: pressed ? 0.85 : 1,
+                },
               ]}
             >
               {/* 카테고리 아이콘 */}
@@ -991,12 +1022,14 @@ export default function InventoryScreen() {
                   <TextInput
                     value={name}
                     onChangeText={setName}
-                    placeholder="예: 우유 1L"
+                    onFocus={() => setNameFocused(true)}
+                    onBlur={() => setNameFocused(false)}
+                    placeholder="예: 우유"
                     placeholderTextColor="rgba(31,41,55,0.45)"
                     style={styles.input}
                     autoCapitalize="none"
                   />
-                  {frequent.length > 0 && (
+                  {frequent.length > 0 && (!name.trim() || nameFocused) && (
                     <View style={styles.dropdown}>
                       <Text style={styles.dropdownLabel}>자주 쓰는 재료</Text>
                       <View style={styles.chipsRow}>
@@ -1261,32 +1294,55 @@ export default function InventoryScreen() {
         transparent
         visible={confirmDelete && !isEditOpen}
         animationType="fade"
-        onRequestClose={() => { setConfirmDelete(false); setEditTarget(null); }}
+        onRequestClose={() => {
+          setConfirmDelete(false);
+          setEditTarget(null);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modal, { maxHeight: undefined }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>재료 삭제</Text>
-              <Pressable onPress={() => { setConfirmDelete(false); setEditTarget(null); }} style={styles.iconBtn}>
+              <Pressable
+                onPress={() => {
+                  setConfirmDelete(false);
+                  setEditTarget(null);
+                }}
+                style={styles.iconBtn}
+              >
                 <MaterialIcons name="close" size={18} color={THEME.muted} />
               </Pressable>
             </View>
             <View style={[styles.modalBody, { paddingVertical: 20 }]}>
-              <Text style={{ fontSize: 15, color: THEME.text, textAlign: "center" }}>
-                <Text style={{ fontWeight: "900" }}>{editTarget?.itemName}</Text>을(를) 삭제할까요?
+              <Text
+                style={{ fontSize: 15, color: THEME.text, textAlign: "center" }}
+              >
+                <Text style={{ fontWeight: "900" }}>
+                  {editTarget?.itemName}
+                </Text>
+                을(를) 삭제할까요?
               </Text>
             </View>
             <View style={styles.modalFooter}>
               <Pressable
-                onPress={() => { setConfirmDelete(false); setEditTarget(null); }}
-                style={({ pressed }) => [styles.btnGhost, pressed && { opacity: 0.9 }]}
+                onPress={() => {
+                  setConfirmDelete(false);
+                  setEditTarget(null);
+                }}
+                style={({ pressed }) => [
+                  styles.btnGhost,
+                  pressed && { opacity: 0.9 },
+                ]}
               >
                 <Text style={styles.btnGhostText}>취소</Text>
               </Pressable>
               <View style={{ width: 10 }} />
               <Pressable
                 onPress={deleteFromEdit}
-                style={({ pressed }) => [styles.btnDanger, pressed && { opacity: 0.9 }]}
+                style={({ pressed }) => [
+                  styles.btnDanger,
+                  pressed && { opacity: 0.9 },
+                ]}
               >
                 <Text style={styles.btnDangerText}>삭제</Text>
               </Pressable>
@@ -1479,6 +1535,11 @@ export default function InventoryScreen() {
 }
 
 const styles: any = {
+  headerSection: {
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+    backgroundColor: THEME.bg,
+  },
   topbar: { flexDirection: "row", alignItems: "center", gap: 10 },
   h2: { fontSize: 22, fontWeight: "800", color: THEME.text },
   sub: { marginTop: 2, fontSize: 12, color: THEME.muted },
@@ -1502,6 +1563,16 @@ const styles: any = {
   iconCircleActive: {
     backgroundColor: "rgba(127,183,126,0.20)",
     borderColor: "rgba(127,183,126,0.4)",
+  },
+  iconCircleAdd: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(15,31,22,0.15)",
+    backgroundColor: THEME.brand,
+    alignItems: "center",
+    justifyContent: "center",
   },
   toolbarIconText: { fontSize: 16 },
   badgeDot: {
@@ -1611,16 +1682,11 @@ const styles: any = {
   },
   errorText: { color: "#B42318", fontSize: 12, fontWeight: "700" },
 
-  // 카테고리 항상 노출 행
-  categoryRow: {
-    flexDirection: "row",
-    gap: 6,
-    paddingBottom: 4,
-  },
+  categoryRow: {},
   categoryChip: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: THEME.border,
     backgroundColor: "#FFFFFF",

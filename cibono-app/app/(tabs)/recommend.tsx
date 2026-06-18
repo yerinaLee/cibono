@@ -1,7 +1,13 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -102,7 +108,6 @@ function norm(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toLowerCase();
 }
 
-
 export default function RecommendScreen() {
   const router = useRouter();
   const [items, setItems] = useState<Suggestion[]>([]);
@@ -117,7 +122,9 @@ export default function RecommendScreen() {
 
   const [blogResults, setBlogResults] = useState<BlogSearchResult[]>([]);
   const [blogLoading, setBlogLoading] = useState(false);
-  const [savedSearchBlogs, setSavedSearchBlogs] = useState<Set<string>>(new Set());
+  const [savedSearchBlogs, setSavedSearchBlogs] = useState<Set<string>>(
+    new Set(),
+  );
   const [savingSearchBlog, setSavingSearchBlog] = useState<string | null>(null);
 
   const [inputVal, setInputVal] = useState("");
@@ -273,26 +280,37 @@ export default function RecommendScreen() {
     );
   }, [computed, cuisineFilter, q, timePreset]);
 
-  const toggleSearchBlogSave = useCallback(async (blog: BlogSearchResult) => {
-    const key = blog.link;
-    setSavingSearchBlog(key);
-    try {
-      if (savedSearchBlogs.has(key)) {
-        await api.delete("/saved-recipes/by-name", { params: { name: blog.title } });
-        setSavedSearchBlogs((prev) => { const next = new Set(prev); next.delete(key); return next; });
-      } else {
-        await api.post("/saved-recipes", {
-          recipeName: blog.title,
-          imageUrl: blog.imageUrl ?? null,
-          sourceType: "BLOG",
-          sourceUrl: blog.link,
-          ingredients: null,
-        });
-        setSavedSearchBlogs((prev) => new Set([...prev, key]));
+  const toggleSearchBlogSave = useCallback(
+    async (blog: BlogSearchResult) => {
+      const key = blog.link;
+      setSavingSearchBlog(key);
+      try {
+        if (savedSearchBlogs.has(key)) {
+          await api.delete("/saved-recipes/by-name", {
+            params: { name: blog.title },
+          });
+          setSavedSearchBlogs((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        } else {
+          await api.post("/saved-recipes", {
+            recipeName: blog.title,
+            imageUrl: blog.imageUrl ?? null,
+            sourceType: "BLOG",
+            sourceUrl: blog.link,
+            ingredients: null,
+          });
+          setSavedSearchBlogs((prev) => new Set([...prev, key]));
+        }
+      } catch {
+      } finally {
+        setSavingSearchBlog(null);
       }
-    } catch {}
-    finally { setSavingSearchBlog(null); }
-  }, [savedSearchBlogs]);
+    },
+    [savedSearchBlogs],
+  );
 
   // 검색어 있을 때 블로그 검색
   useEffect(() => {
@@ -419,9 +437,34 @@ export default function RecommendScreen() {
 
   const Header = (
     <View style={{ paddingBottom: 8 }}>
-      <AppHeader title="Recommend" subtitle="임박 재료 우선 요리 추천" />
+      {/* 검색 중일 때는 임박재료·오늘의 추천 숨기고, 식약처 결과 헤딩만 표시 */}
+      {q.trim() ? (
+        filtered.length > 0 && (
+          <View style={styles.sectionHead}>
+            <Text style={styles.h3}>식약처 레시피</Text>
+            <Text style={styles.meta}>&ldquo;{q}&rdquo; 검색 결과</Text>
+          </View>
+        )
+      ) : (
+        <>
+          {CrawledSection}
+          <View style={styles.sectionHead}>
+            <Text style={styles.h3}>오늘의 추천</Text>
+            <Text style={styles.meta}>탭 이동 시 자동 갱신</Text>
+          </View>
+        </>
+      )}
+    </View>
+  );
 
-      {/* 검색·필터 툴바 — 헤더 아래 별도 라인 */}
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: THEME.bg }}
+      edges={["bottom", "left", "right"]}
+    >
+      <AppHeader title="추천" subtitle="임박 재료 우선 레시피 추천" />
+
+      {/* 검색·필터 툴바 */}
       <View style={styles.toolbar}>
         <Pressable
           onPress={() => setShowSearch((p) => !p)}
@@ -488,7 +531,10 @@ export default function RecommendScreen() {
           />
           {inputVal.length > 0 && (
             <Pressable
-              onPress={() => { setInputVal(""); setQ(""); }}
+              onPress={() => {
+                setInputVal("");
+                setQ("");
+              }}
               style={styles.clearBtn}
             >
               <Text style={{ color: THEME.muted, fontWeight: "700" }}>×</Text>
@@ -528,7 +574,6 @@ export default function RecommendScreen() {
               );
             })}
           </View>
-
           <View style={styles.filterRow}>
             <Text style={styles.filterLabel}>분류</Text>
             {(["ALL", "KOREAN", "WESTERN", "CHINESE", "GLOBAL"] as const).map(
@@ -566,31 +611,6 @@ export default function RecommendScreen() {
         </View>
       ) : null}
 
-      {/* 검색 중일 때는 임박재료·오늘의 추천 숨기고, 식약처 결과 헤딩만 표시 */}
-      {q.trim() ? (
-        filtered.length > 0 && (
-          <View style={styles.sectionHead}>
-            <Text style={styles.h3}>식약처 레시피</Text>
-            <Text style={styles.meta}>&ldquo;{q}&rdquo; 검색 결과</Text>
-          </View>
-        )
-      ) : (
-        <>
-          {CrawledSection}
-          <View style={styles.sectionHead}>
-            <Text style={styles.h3}>오늘의 추천</Text>
-            <Text style={styles.meta}>탭 이동 시 자동 갱신</Text>
-          </View>
-        </>
-      )}
-    </View>
-  );
-
-  return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: THEME.bg }}
-      edges={["bottom", "left", "right"]}
-    >
       <FlatList
         data={filtered.slice(0, 8)}
         keyExtractor={(x, idx) => `${x.name}-${idx}`}
@@ -617,7 +637,10 @@ export default function RecommendScreen() {
                         />
                       ) : (
                         <View
-                          style={[styles.blogThumb, styles.blogThumbPlaceholder]}
+                          style={[
+                            styles.blogThumb,
+                            styles.blogThumbPlaceholder,
+                          ]}
                         >
                           <MaterialIcons
                             name="article"
@@ -643,9 +666,17 @@ export default function RecommendScreen() {
                         hitSlop={8}
                       >
                         <MaterialIcons
-                          name={savedSearchBlogs.has(blog.link) ? "bookmark" : "bookmark-border"}
+                          name={
+                            savedSearchBlogs.has(blog.link)
+                              ? "bookmark"
+                              : "bookmark-border"
+                          }
                           size={22}
-                          color={savedSearchBlogs.has(blog.link) ? THEME.brand : THEME.muted}
+                          color={
+                            savedSearchBlogs.has(blog.link)
+                              ? THEME.brand
+                              : THEME.muted
+                          }
                         />
                       </Pressable>
                     </View>
@@ -737,7 +768,10 @@ export default function RecommendScreen() {
         ListEmptyComponent={
           q.trim() ? (
             blogLoading ? (
-              <ActivityIndicator style={{ marginVertical: 20 }} color={THEME.brand} />
+              <ActivityIndicator
+                style={{ marginVertical: 20 }}
+                color={THEME.brand}
+              />
             ) : null
           ) : (
             <View style={[styles.empty, { marginHorizontal: 14 }]}>
@@ -1022,8 +1056,18 @@ const styles: any = {
     alignItems: "center",
     justifyContent: "center",
   },
-  blogTitle: { fontSize: 14, fontWeight: "800", color: THEME.text, lineHeight: 19 },
-  blogMeta: { marginTop: 2, fontSize: 11, color: THEME.brand, fontWeight: "700" },
+  blogTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: THEME.text,
+    lineHeight: 19,
+  },
+  blogMeta: {
+    marginTop: 2,
+    fontSize: 11,
+    color: THEME.brand,
+    fontWeight: "700",
+  },
   blogDesc: { marginTop: 2, fontSize: 11, color: THEME.muted, lineHeight: 15 },
 
   // 만개의 레시피 가로 스크롤 카드
