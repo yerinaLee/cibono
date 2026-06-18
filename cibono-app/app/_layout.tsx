@@ -106,6 +106,10 @@ export default function RootLayout() {
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen name="recipe-detail" options={{ headerShown: false }} />
           <Stack.Screen name="admin-notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen name="shopping-list" options={{ headerShown: false }} />
+          <Stack.Screen name="saved-recipes" options={{ headerShown: false }} />
+          <Stack.Screen name="ingredient-recipes" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

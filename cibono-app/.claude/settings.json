@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(Object.keys\\(p.dependencies||{}\\)\\)\\)\")",
+      "Bash(npx expo *)",
+      "WebFetch(domain:www.10000recipe.com)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\admin\\Desktop\\test\\cibono"
+    ]
+  }
+}
