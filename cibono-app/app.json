@@ -29,7 +29,14 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -49,7 +56,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

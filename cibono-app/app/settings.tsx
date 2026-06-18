@@ -1,8 +1,9 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { api } from "../src/api/client";
 
 const APP_VERSION = "0.1.0";
 
@@ -17,6 +18,13 @@ const THEME = {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    api.get<{ role: string }>("/me").then((res) => {
+      setIsAdmin(res.data.role === "ADMIN");
+    }).catch(() => {});
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
@@ -50,19 +58,21 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>관리자</Text>
-          <Pressable
-            onPress={() => router.push("/admin-notifications")}
-            style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <MaterialIcons name="notifications-active" size={16} color={THEME.brand} />
-              <Text style={styles.rowLabel}>알림 관리</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={18} color={THEME.muted} />
-          </Pressable>
-        </View>
+        {isAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>관리자</Text>
+            <Pressable
+              onPress={() => router.push("/admin-notifications")}
+              style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <MaterialIcons name="notifications-active" size={16} color={THEME.brand} />
+                <Text style={styles.rowLabel}>알림 관리</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={18} color={THEME.muted} />
+            </Pressable>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>기능</Text>
