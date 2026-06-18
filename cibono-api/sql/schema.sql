@@ -12,8 +12,10 @@
 -- 1) 사용자 계정
 CREATE TABLE IF NOT EXISTS app_user (
     id           BIGSERIAL    PRIMARY KEY,
-    email        VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    email        VARCHAR(255) UNIQUE,
+    password_hash VARCHAR(255),
+    firebase_uid VARCHAR(255) UNIQUE, -- app user 식별은 firebase로 함
+    role VARCHAR(20) DEFAULT 'USER', -- USER / ADMIN
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 

@@ -1,7 +1,7 @@
 # Cibono 프로젝트 작업 로그
 
 > AI 대화 간 컨텍스트 공유용. 굵직한 작업 흐름만 기록.
-> 업데이트: 2026-06-15 (8차)
+> 업데이트: 2026-06-18 (9차)
 
 ---
 
@@ -299,6 +299,36 @@
   - 변경: `POST /inventory/scan` → GeminiService.scanReceipt() (이미지 직접 Vision API)
   - `InventoryController.scan()` 에서 `tesseractOcr.extractText()` 제거, `geminiService.scanReceipt()` 직접 호출
   - 결과: 한국어 열영수증 인식 정확도 대폭 향상
+
+---
+
+### Firebase 익명 인증 + 유저 식별 + 관리자 권한 분리 (2026-06-18, 9차)
+
+#### Firebase 익명 인증 (유저 식별)
+- **목적**: 앱 설치 시 회원가입 없이 디바이스별 유저 식별
+- **방식**: Firebase Anonymous Auth REST API (`accounts:signUp`) — 네이티브 SDK 없이 동작
+- **`src/auth/firebaseAuth.ts`** 신규 — 익명 로그인, 토큰 갱신, `expo-secure-store`에 refreshToken 영구 저장
+- **`src/api/client.ts`** — Axios 인터셉터 추가, 모든 요청에 `Authorization: Bearer <idToken>` 자동 첨부
+- **`app/_layout.tsx`** — 앱 시작 시 `initFirebaseAuth()` 호출
+
+#### 백엔드 Firebase Admin SDK 연동
+- **`build.gradle`** — `firebase-admin:9.3.0` 의존성 추가
+- **`FirebaseConfig.java`** 신규 — `firebase-service-account.json` (classpath) 으로 Admin SDK 초기화
+- **`AppUser.java`** 신규 엔티티 — `id, firebase_uid, email, password_hash, role, created_at`
+  - 기존 `app_user` 테이블 재활용, `firebase_uid UNIQUE` + `role DEFAULT 'USER'` 컬럼 추가 (ALTER TABLE)
+- **`AppUserRepository.java`** 신규 — `findByFirebaseUid()` 쿼리
+- **`FirebaseAuthFilter.java`** 신규 — `OncePerRequestFilter`
+  - Bearer 토큰 검증 → Firebase UID 추출 → DB에서 유저 조회 (없으면 자동 생성)
+  - 동시 요청 race condition 대비: `DataIntegrityViolationException` catch 후 재조회
+  - 토큰 없을 때 개발용 fallback: user_id=1, role=ADMIN
+- **`UserContext.java`** 변경 — 하드코딩 `1L` → ThreadLocal 기반 (`userId`, `role` 저장/조회)
+- **`SecurityConfig.java`** 변경 — `FirebaseAuthFilter`를 `UsernamePasswordAuthenticationFilter` 앞에 등록
+- **`UserController.java`** 신규 — `GET /me` → `{ userId, role }` 반환
+
+#### 관리자 권한 분리
+- **백엔드**: `FirebaseAuthFilter`에서 `/admin/**` 경로 접근 시 role=ADMIN 아니면 403 반환
+- **DB**: `UPDATE app_user SET role = 'ADMIN' WHERE firebase_uid = '...'` 로 관리자 지정
+- **프론트 `settings.tsx`** — `GET /me` 호출해서 role 조회, `isAdmin` 상태로 관리자 섹션 조건부 렌더링
 
 ---
 

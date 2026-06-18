@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { api } from '../src/api/client';
+import { initFirebaseAuth } from '../src/auth/firebaseAuth';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -18,6 +19,8 @@ try {
   Notifications?.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
       shouldPlaySound: true,
       shouldSetBadge: false,
     }),
@@ -60,6 +63,11 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const navigatedRef = useRef(false);
+
+  // Firebase 익명 로그인
+  useEffect(() => {
+    initFirebaseAuth().catch((e) => console.warn('[Auth] Firebase 초기화 실패:', e));
+  }, []);
 
   // 푸시 토큰 등록
   useEffect(() => {

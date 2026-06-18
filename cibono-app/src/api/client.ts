@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getIdToken } from "../auth/firebaseAuth";
 
 const baseURL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
@@ -8,6 +9,15 @@ export const api = axios.create({
   headers: {
     "ngrok-skip-browser-warning": "true",
   },
+});
+
+// 모든 요청에 Firebase ID Token 자동 첨부
+api.interceptors.request.use(async (config) => {
+  const token = await getIdToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 export function proxyImageUrl(url: string | null | undefined): string | null {
