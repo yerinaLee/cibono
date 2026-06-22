@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
-    List<Inventory> findByUserIdOrderByExpiresAtAsc(Long userId);
-    Optional<Inventory> findFirstByUserIdAndItemNameIgnoreCase(Long userId, String itemName);
+	
+	List<Inventory> findByUserIdOrderByExpiresAtAsc(Long userId);
+	
+	Optional<Inventory> findFirstByUserIdAndItemNameIgnoreCase(Long userId, String itemName);
+	
 }

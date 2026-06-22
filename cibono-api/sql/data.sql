@@ -155,7 +155,7 @@ INSERT INTO ingredient (name) VALUES
     -- 기타
     ('미역'), ('북어'), ('파슬리'), ('생강'), ('고추'),
     ('토마토'), ('양상추'), ('코코넛밀크')
-ON CONFLICT ON CONSTRAINT ingredient_name_uk DO NOTHING;
+ON CONFLICT ON CONSTRAINT ingredient_name_key DO NOTHING;
 
 -- -----------------------------------------------
 -- 레시피-재료 연결 (전체, 한 번에 삽입)

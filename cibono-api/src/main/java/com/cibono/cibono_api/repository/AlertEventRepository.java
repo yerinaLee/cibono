@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AlertEventRepository extends JpaRepository<AlertEvent, Long> {
-
-    List<AlertEvent> findByUserIdOrderByTriggeredAtDesc(Long userId);
-
-    List<AlertEvent> findByUserIdAndSeenOrderByTriggeredAtDesc(Long userId, boolean seen);
-
-    Optional<AlertEvent> findByUserIdAndDealId(Long userId, Long dealId);
-
+	
+	List<AlertEvent> findByUserIdOrderByTriggeredAtDesc(Long userId);
+	
+	List<AlertEvent> findByUserIdAndSeenOrderByTriggeredAtDesc(Long userId, boolean seen);
+	
+	Optional<AlertEvent> findByUserIdAndDealId(Long userId, Long dealId);
+	
 }
