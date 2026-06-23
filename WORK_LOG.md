@@ -332,9 +332,79 @@
 
 ---
 
+### UI/UX 고도화 + 로고 애니메이션 (2026-06-23, 10차)
+
+#### 대시보드 개편
+- **냉장고 재료 카드** — 식재료 분류별 그룹핑, 분류당 3개 유통기한 임박순 정렬
+  - 임박 재료에 이미 포함된 항목 제외 (중복 표시 방지)
+  - 카테고리명 앞 이모티콘 추가 (🥬 채소/과일 / 🥩 육류/계란 / 🐟 해산물 / 🥛 우유/유제품 / 🍱 밀키트 / 📦 기타)
+  - `+` 버튼 추가 → 재료 추가 모달 오픈
+  - "전체 보기" 링크 우측 하단으로 이동
+- **추천 요리 카드** — "전체 추천 보기" 링크 우측 하단으로 이동
+
+#### 공통 재료 추가 모달 컴포넌트
+- `components/AddInventoryModal.tsx` 신규 생성
+- 대시보드와 냉장고 탭이 동일한 재료 추가 화면 공유
+- 자체적으로 카테고리/인벤토리 API 호출 및 상태 관리
+
+#### 헤더 고정
+- 홈, 추천, 쇼핑리스트, 저장된레시피 탭 — 스크롤 시 헤더 고정
+- `SafeAreaView edges={["bottom","left","right"]}` + 헤더를 ScrollView/FlatList 바깥으로 분리
+- 추천 탭: 검색창 + 필터 패널까지 헤더에 포함하여 고정
+
+#### 쇼핑리스트 개선
+- 추가 버튼 → 헤더 우측 `+` 원형 버튼으로 변경 (냉장고 탭 스타일)
+- 검색 기능 추가 (검색창 헤더 하단 고정)
+
+#### 냉장고(Inventory) 개선
+- 재료 추가 모달: 품목명 비어있거나 포커스 시에만 자주 쓰는 재료 표시
+- 식재료 분류 칩: 가로 스크롤 → flexWrap으로 변경 (모달 내)
+- 카테고리 필터 오른쪽 페이드 블러 제거
+
+#### 메인 헤더 로고 애니메이션
+- `expo-video` 설치, `AppHeader` → VideoView 기반 커스텀 헤더로 교체
+- ffmpeg로 `.mov` (argb 알파채널) + `#F3F8F1` 배경색 합성 → `assets/cibono_logo.mp4` 생성
+  ```bash
+  ffmpeg -f lavfi -i "color=c=#F3F8F1:size=1280x720:rate=24" \
+    -i cibono_logo_transparent.mov \
+    -filter_complex "[0:v][1:v]overlay=0:0:shortest=1" \
+    -c:v libx264 -pix_fmt yuv420p cibono_logo.mp4
+  ```
+- **미완료**: 로고 영상 내 텍스트 흰색 → 짙은 녹색 변경 필요 (원본 재export 후 재합성)
+
+---
+
+### OCR 파이프라인 — YOLO + OCR 구조 전환 (2026-06-23, 진행 중)
+
+#### 배경
+- 기존 Gemini Vision 방식에서 변경
+- YOLO로 영수증 내 주요 정보 영역 탐지 → OCR로 텍스트 추출하는 구조로 결정
+
+#### 데이터셋
+- **KORIE** 한국 영수증 탐지 데이터셋
+- train 464 / val 154 / test 156 images, 17개 클래스
+- 핵심 클래스: `Item`, `Description`, `Quantity`, `Price`, `TransactionDate` 등
+- 라벨 이미 YOLO 포맷 완료, 로컬: `C:/Users/admin/Downloads/dataset`
+- Google Drive 업로드 완료: `내 드라이브/dataset/` (train, val, test 폴더)
+- `ml/korie/` — README.md, data.yaml 작성 완료
+
+#### 완료
+- Colab GPU(T4) 세팅, ultralytics 설치 완료
+
+#### 다음 단계
+1. Colab에서 data.yaml 생성 + YOLO 학습 실행
+2. `best.pt` 생성 후 Google Drive 백업
+3. FastAPI 추론 서버 구축 (best.pt → 영역 crop → OCR)
+4. OCR 엔진 연결 (PaddleOCR 또는 ML Kit)
+5. inventory 파싱 플로우 연결 (OCR 결과 → `/inventory` API)
+
+---
+
 ## 현재 진행 중
 
-- [ ] 식약처 API 배치 수집 or 레시피 데이터셋 대량 추가
+- [ ] YOLO 학습 (Colab) → best.pt 생성
+- [ ] FastAPI OCR 추론 서버 구축
+- [ ] 로고 영상 텍스트 색상 변경 (원본 재export 필요)
 
 ---
 
@@ -352,6 +422,8 @@
 | 프론트 | React Native (Expo), TypeScript |
 | 백엔드 | Spring Boot, Java |
 | DB | PostgreSQL, schema.sql / data.sql 수동 적용 |
-| OCR | Gemini API |
+| OCR | Gemini API → YOLO + PaddleOCR (전환 중) |
+| ML | YOLO (ultralytics), KORIE 데이터셋 |
 | 외부 API | 식품의약품안전처 COOKRCP01, 네이버 블로그 검색 |
 | API 통신 | REST, Axios (`src/api/client.ts`) |
+| 영상 | expo-video, ffmpeg |

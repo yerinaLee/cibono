@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cibono-db
+    restart: always
+    environment:
+      POSTGRES_DB: fridge
+      POSTGRES_USER: fridge
+      POSTGRES_PASSWORD: fridge
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ../cibono-api/sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    container_name: cibono-app
+    restart: always
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/fridge
+      SPRING_DATASOURCE_USERNAME: fridge
+      SPRING_DATASOURCE_PASSWORD: fridge
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:
