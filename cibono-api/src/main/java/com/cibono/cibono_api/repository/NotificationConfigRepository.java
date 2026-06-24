@@ -6,5 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface NotificationConfigRepository extends JpaRepository<NotificationConfig, Long> {
-    List<NotificationConfig> findAllByEnabledTrue();
+	
+	List<NotificationConfig> findAllByEnabledTrue();
+	
 }

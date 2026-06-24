@@ -6,5 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface ItemShelfLifeRepository extends JpaRepository<ItemShelfLife, Long> {
-    Optional<ItemShelfLife> findByItemName(String itemName);
+	
+	Optional<ItemShelfLife> findByItemName(String itemName);
+	
 }

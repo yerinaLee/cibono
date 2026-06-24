@@ -7,9 +7,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 public class CibonoApiApplication {
-
+	
 	public static void main(String[] args) {
 		SpringApplication.run(CibonoApiApplication.class, args);
 	}
-
+	
 }
