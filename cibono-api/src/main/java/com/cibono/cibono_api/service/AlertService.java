@@ -106,26 +106,24 @@ public class AlertService {
 		return count;
 	}
 	
-	/** 오늘 활성 deal을 기준으로, price_alert 조건 만족하면 alert_event 생성 */
+	/** 오늘 활성 deal을 기준으로, 전체 유저의 price_alert 조건 만족하면 alert_event 생성 */
 	@Transactional
-	public int runDailyScan(long userId) {
+	public int runDailyScan() {
 		LocalDate today = LocalDate.now();
-		List<PriceAlert> rules = priceAlertRepository.findByUserId(userId);
+		List<PriceAlert> rules = priceAlertRepository.findByIsEnabledTrue();
 		int created = 0;
-		
+
 		for (PriceAlert rule : rules) {
-			if (!rule.isEnabled()) {
-				continue;
-			}
 			List<Deal> deals = dealRepository.findByItemNameIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
 					rule.getItemName(), today, today);
 			
 			for (Deal d : deals) {
 				if (d.getDealPrice() > rule.getAnchorPrice()) {continue;}
-				if (alertEventRepository.findByUserIdAndDealId(userId, d.getId()).isPresent()) {continue;}
-				
+				if (rule.getStoreId() != null && !rule.getStoreId().equals(d.getStoreId())) {continue;}
+				if (alertEventRepository.findByUserIdAndDealId(rule.getUserId(), d.getId()).isPresent()) {continue;}
+
 				AlertEvent ev = new AlertEvent();
-				ev.setUserId(userId);
+				ev.setUserId(rule.getUserId());
 				ev.setDealId(d.getId());
 				alertEventRepository.save(ev);
 				created++;

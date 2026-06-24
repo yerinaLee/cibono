@@ -288,3 +288,9 @@ INSERT INTO item_shelf_life (item_name, shelf_life_days) VALUES
     ('시금치',       7), ('애호박',  14), ('새우',         7), ('청경채',  7),
     ('두부',         7), ('토마토',  14), ('양상추',       7)
 ON CONFLICT (item_name) DO NOTHING;
+
+-- -----------------------------------------------
+-- 마트
+-- -----------------------------------------------
+INSERT INTO store (name, region, source, store_no)
+VALUES ('이마트 용산점', 'seoul', 'MARTMONSTER', '2517');

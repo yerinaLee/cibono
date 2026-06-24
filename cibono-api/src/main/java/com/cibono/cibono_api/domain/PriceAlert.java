@@ -35,6 +35,9 @@ public class PriceAlert {
 	@Column(name = "is_enabled", nullable = false)
 	private boolean isEnabled = true;
 	
+	@Column(name = "store_id")
+	private Long storeId;
+	
 	@Column(name = "created_at", nullable = false)
 	private OffsetDateTime createdAt = OffsetDateTime.now();
 	

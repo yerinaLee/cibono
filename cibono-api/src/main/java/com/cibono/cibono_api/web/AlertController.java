@@ -35,7 +35,7 @@ public class AlertController {
 	
 	@PostMapping("/admin/alerts/run-scan")
 	public int runScanNow() {
-		return alertService.runDailyScan(UserContext.userId());
+		return alertService.runDailyScan();
 	}
 	
 }

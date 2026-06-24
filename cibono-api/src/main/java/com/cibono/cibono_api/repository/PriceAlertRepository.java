@@ -10,6 +10,8 @@ public interface PriceAlertRepository extends JpaRepository<PriceAlert, Long> {
 	
 	List<PriceAlert> findByUserId(Long userId);
 	
+	List<PriceAlert> findByIsEnabledTrue();
+	
 	List<PriceAlert> findByUserIdAndIsEnabled(Long userId, boolean isEnabled);
 	
 	Optional<PriceAlert> findByIdAndUserId(Long id, Long userId);

@@ -42,6 +42,7 @@ public class AlertRuleController {
 		rule.setItemName(req.itemName());
 		rule.setAnchorPrice(req.thresholdPrice());
 		rule.setThresholdType("LTE");
+		rule.setStoreId(req.storeId());
 		PriceAlert saved = priceAlertRepository.save(rule);
 		
 		return Map.of("id", saved.getId(), "created_at", saved.getCreatedAt());
@@ -87,10 +88,11 @@ public class AlertRuleController {
 				r.getAnchorPrice(),
 				"below",
 				r.isEnabled(),
+				r.getStoreId(),
 				r.getCreatedAt());
 	}
 	
-	record RuleRequest(String itemName, Integer thresholdPrice, String condition, Boolean isEnabled) {}
+	record RuleRequest(String itemName, Integer thresholdPrice, String condition, Boolean isEnabled, Long storeId) {}
 	
 	record RuleDto(
 			Long id,
@@ -98,6 +100,7 @@ public class AlertRuleController {
 			Integer thresholdPrice,
 			String condition,
 			boolean isEnabled,
+			Long storeId,
 			OffsetDateTime createdAt) {
 		record ItemInfo(String name) {}
 	}
