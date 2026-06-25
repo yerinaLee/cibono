@@ -27,7 +27,7 @@ public class GeminiService {
 	private final RestTemplate rest = new RestTemplate();
 	private final ObjectMapper mapper = new ObjectMapper();
 	
-	private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=";
+	private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=";
 	
 	private static final String PROMPT = """
 			이 이미지는 마트 영수증 또는 온라인 쇼핑 주문내역 캡처입니다.
@@ -154,20 +154,20 @@ public class GeminiService {
 	
 	public List<ScannedItem> parseReceiptText(String ocrText) {
 		String prompt = """
-				아래는 마트 영수증/온라인 주문내역에서 OCR로 추출한 텍스트입니다. 인식 오류로 일부 글자가 깨져 있을 수 있습니다.
-				
-				[중요 규칙]
-				1. OCR 텍스트에 명확하게 식별 가능한 한국어 식재료명이 있는 경우에만 추출하세요.
-				2. 텍스트가 깨지거나 알파벳/숫자 조합으로만 이루어져 식재료명을 확신할 수 없으면 절대 추측하거나 지어내지 마세요.
-				3. 확실하지 않은 항목은 포함하지 말고 완전히 제외하세요.
-				4. 식별 가능한 식재료가 하나도 없으면 빈 배열 []을 반환하세요.
-				5. 상품명은 일반 식재료명으로 정규화하세요. 예: "농협 유기농 달걀 30구 1판" → itemName:"계란", quantity:30, unit:"개"
-				6. 식료품이 아닌 항목(세제·휴지·음료·과자·생활용품·합계·금액·바코드 등)은 제외하세요.
-				7. 수량 불명확 시 1, 단위 불명확 시 "개"로 설정하세요.
-				8. 마크다운 없이 JSON 배열만 반환하세요.
-				
+				아래는 마트 영수증 OCR에서 한국어만 추출한 텍스트입니다. OCR 인식 오류로 글자가 일부 틀릴 수 있습니다.
+
+				[규칙]
+				1. 식재료(채소·과일·육류·수산·유제품·곡류·양념 등)에 해당하는 항목을 최대한 추출하세요.
+				2. OCR 오류로 글자가 약간 틀려도 식재료명으로 추정 가능하면 올바른 이름으로 교정하여 포함하세요.
+				   예: "싸은찮이" → "쌈장아찌", "히선점" → "하선정"
+				3. 브랜드명은 제거하고 핵심 식재료명만 남기세요.
+				4. 식재료가 아닌 항목(세제·휴지·생활용품·합계·금액)은 제외하세요.
+				5. 수량 불명확 시 1, 단위 불명확 시 "개"로 설정하세요.
+				6. 식재료를 전혀 찾을 수 없을 때만 빈 배열 []을 반환하세요.
+				7. 마크다운 없이 JSON 배열만 반환하세요.
+
 				응답 형식(이 형식만): [{"itemName":"재료명","quantity":숫자,"unit":"단위"}]
-				
+
 				OCR 텍스트:
 				""" + ocrText;
 		
