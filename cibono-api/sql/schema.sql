@@ -160,3 +160,30 @@ CREATE TABLE IF NOT EXISTS saved_recipe (
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, recipe_name)
 );
+
+-- 15) 푸시 알림 토큰
+CREATE TABLE IF NOT EXISTS push_token (
+    id            BIGSERIAL    PRIMARY KEY,
+    token         VARCHAR(500) NOT NULL UNIQUE,
+    user_id       BIGINT       REFERENCES app_user(id),
+    registered_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- 16) 알림 설정 (관리자가 만드는 스케줄 config)
+CREATE TABLE IF NOT EXISTS notification_config (
+    id              BIGSERIAL    PRIMARY KEY,
+    title           VARCHAR(200) NOT NULL,
+    body_template   VARCHAR(500) NOT NULL,
+    cron_expression VARCHAR(100) NOT NULL,
+    timezone        VARCHAR(50)  NOT NULL DEFAULT 'Asia/Seoul',
+    meal_type       VARCHAR(10)  NOT NULL DEFAULT 'DINNER',  -- LUNCH / DINNER
+    enabled         BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- 17) 사용자별 알림 수신 설정 (점심/저녁 각각 on/off)
+CREATE TABLE IF NOT EXISTS user_notification_preference (
+    user_id        BIGINT   PRIMARY KEY REFERENCES app_user(id),
+    lunch_enabled  BOOLEAN  NOT NULL DEFAULT TRUE,
+    dinner_enabled BOOLEAN  NOT NULL DEFAULT TRUE
+);

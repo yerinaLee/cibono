@@ -1,7 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../src/api/client";
 
@@ -19,12 +19,25 @@ const THEME = {
 export default function SettingsScreen() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [lunchEnabled, setLunchEnabled] = useState(true);
+  const [dinnerEnabled, setDinnerEnabled] = useState(true);
 
   useEffect(() => {
     api.get<{ role: string }>("/me").then((res) => {
       setIsAdmin(res.data.role === "ADMIN");
     }).catch(() => {});
+
+    api.get<{ lunchEnabled: boolean; dinnerEnabled: boolean }>("/notifications/preferences")
+      .then((res) => {
+        setLunchEnabled(res.data.lunchEnabled);
+        setDinnerEnabled(res.data.dinnerEnabled);
+      })
+      .catch(() => {});
   }, []);
+
+  const updatePreference = (lunch: boolean, dinner: boolean) => {
+    api.put("/notifications/preferences", { lunchEnabled: lunch, dinnerEnabled: dinner }).catch(() => {});
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
@@ -73,6 +86,40 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>알림 설정</Text>
+          <View style={styles.row}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="wb-sunny" size={16} color={THEME.brand} />
+              <Text style={styles.rowLabel}>점심 메뉴 추천</Text>
+            </View>
+            <Switch
+              value={lunchEnabled}
+              onValueChange={(v) => {
+                setLunchEnabled(v);
+                updatePreference(v, dinnerEnabled);
+              }}
+              trackColor={{ false: THEME.border, true: THEME.brand }}
+              thumbColor="#fff"
+            />
+          </View>
+          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: THEME.border }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="nights-stay" size={16} color={THEME.brand} />
+              <Text style={styles.rowLabel}>저녁 메뉴 추천</Text>
+            </View>
+            <Switch
+              value={dinnerEnabled}
+              onValueChange={(v) => {
+                setDinnerEnabled(v);
+                updatePreference(lunchEnabled, v);
+              }}
+              trackColor={{ false: THEME.border, true: THEME.brand }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>기능</Text>
