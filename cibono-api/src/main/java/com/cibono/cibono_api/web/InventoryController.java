@@ -8,7 +8,11 @@ import com.cibono.cibono_api.repository.InventoryRepository;
 import com.cibono.cibono_api.service.GeminiService;
 import com.cibono.cibono_api.service.GeminiService.ScannedItem;
 import com.cibono.cibono_api.service.InventoryService;
+import com.cibono.cibono_api.service.ClovaOcrService;
+import com.cibono.cibono_api.service.DirectOcrService;
+import com.cibono.cibono_api.service.KorieOcrService;
 import com.cibono.cibono_api.service.TesseractOcrService;
+import com.cibono.cibono_api.service.YoloOcrService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -26,17 +30,29 @@ public class InventoryController {
     private final InventoryService inventoryService;
     private final GeminiService geminiService;
     private final TesseractOcrService tesseractOcr;
+    private final YoloOcrService yoloOcrService;
+    private final ClovaOcrService clovaOcrService;
+    private final DirectOcrService directOcrService;
+    private final KorieOcrService korieOcrService;
 
     public InventoryController(InventoryRepository inventoryRepository,
                                FoodCategoryRepository foodCategoryRepository,
                                InventoryService inventoryService,
                                GeminiService geminiService,
-                               TesseractOcrService tesseractOcr) {
+                               TesseractOcrService tesseractOcr,
+                               YoloOcrService yoloOcrService,
+                               ClovaOcrService clovaOcrService,
+                               DirectOcrService directOcrService,
+                               KorieOcrService korieOcrService) {
         this.inventoryRepository = inventoryRepository;
         this.foodCategoryRepository = foodCategoryRepository;
         this.inventoryService = inventoryService;
         this.geminiService = geminiService;
         this.tesseractOcr = tesseractOcr;
+        this.yoloOcrService = yoloOcrService;
+        this.clovaOcrService = clovaOcrService;
+        this.directOcrService = directOcrService;
+        this.korieOcrService = korieOcrService;
     }
 
     public record ScanRequest(String imageBase64, String mimeType) {}
@@ -123,6 +139,34 @@ public class InventoryController {
     public List<ScannedItem> scan(@RequestBody ScanRequest req) {
         List<ScannedItem> result = geminiService.scanReceipt(req.imageBase64(), req.mimeType());
         log.info("=== Gemini Vision 결과 ({}) ===\n{}", result.size(), result);
+        return result;
+    }
+
+    @PostMapping("/inventory/scan-yolo")
+    public List<ScannedItem> scanYolo(@RequestBody ScanRequest req) {
+        List<ScannedItem> result = yoloOcrService.scan(req.imageBase64(), req.mimeType());
+        log.info("=== YOLO+PaddleOCR 결과 ({}) ===\n{}", result.size(), result);
+        return result;
+    }
+
+    @PostMapping("/inventory/scan-clova")
+    public List<ScannedItem> scanClova(@RequestBody ScanRequest req) {
+        List<ScannedItem> result = clovaOcrService.scan(req.imageBase64(), req.mimeType());
+        log.info("=== CLOVA OCR 결과 ({}) ===\n{}", result.size(), result);
+        return result;
+    }
+
+    @PostMapping("/inventory/scan-direct")
+    public List<ScannedItem> scanDirect(@RequestBody ScanRequest req) {
+        List<ScannedItem> result = directOcrService.scan(req.imageBase64(), req.mimeType());
+        log.info("=== Direct OCR 결과 ({}) ===\n{}", result.size(), result);
+        return result;
+    }
+
+    @PostMapping("/inventory/scan-korie")
+    public List<ScannedItem> scanKorie(@RequestBody ScanRequest req) {
+        List<ScannedItem> result = korieOcrService.scan(req.imageBase64(), req.mimeType());
+        log.info("=== KORIE OCR 결과 ({}) ===\n{}", result.size(), result);
         return result;
     }
 
