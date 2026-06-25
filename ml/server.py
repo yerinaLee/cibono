@@ -221,14 +221,22 @@ async def ocr_korie(file: UploadFile = File(...)):
         scale = 1920 / max(h, w)
         img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
-    # 2. YOLO: 텍스트 박스 감지
+    # 2. YOLO: 텍스트 박스 감지 (식재료 파싱 불필요 클래스 제외)
+    # Price/TotalPrice/Quantity 포함 시 crop 34개 → 7.86s (일부 영수증에서 제품명이 Price로 분류될 수 있음)
+    # KORIE_SKIP_CLASSES = {"ProductCode", "ReceiptNumber", "TransactionTime", "MerchantName", "Total", "Subtotal"}
+    KORIE_SKIP_CLASSES = {"ProductCode", "ReceiptNumber", "TransactionTime", "MerchantName", "Total", "Subtotal", "Price", "TotalPrice", "Quantity"}
+    t0 = time.time()
     results = model(img)[0]
     boxes = []
     for box in results.boxes:
+        class_name = model.names[int(box.cls)]
+        if class_name in KORIE_SKIP_CLASSES:
+            continue
         x1, y1, x2, y2 = map(int, box.xyxy[0])
         conf = float(box.conf)
         if conf > 0.2:
             boxes.append((x1, y1, x2, y2, conf))
+    print(f"[KORIE] YOLO 감지: {time.time() - t0:.2f}s")
 
     # 2. 클래스 무관 NMS (같은 영역 중복 박스 제거)
     boxes = cross_class_nms(boxes, iou_thr=0.5)
@@ -243,6 +251,7 @@ async def ocr_korie(file: UploadFile = File(...)):
              if img[y1:y2, x1:x2].size > 0 and img[y1:y2, x1:x2].shape[0] >= 5]
 
     # 5. 순차 OCR (cls=False로 각도 분류 생략 → 속도 향상)
+    t1 = time.time()
     texts = []
     if PADDLE_AVAILABLE and crops:
         for crop in crops:
@@ -252,6 +261,7 @@ async def ocr_korie(file: UploadFile = File(...)):
     elif crops:
         texts = [t for crop in crops
                  if (t := ocr_crop(crop, engine="easy", det=False).strip())]
+    print(f"[KORIE] OCR: {time.time() - t1:.2f}s ({len(crops)}개 crop)")
 
     full_text = "\n".join(texts)
     print(f"[KORIE] 전체 텍스트:\n{full_text}")
