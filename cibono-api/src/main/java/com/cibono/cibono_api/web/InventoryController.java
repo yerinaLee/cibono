@@ -102,7 +102,7 @@ public class InventoryController {
         inv.setPurchasedAt(req.getPurchasedAt());
         inv.setExpiresAt(req.getExpiresAt());
         inv.setCategoryId(req.getCategoryId());
-        inv.setFavorite(req.isFavorite());
+        inv.setFavorite(req.getFavorite());
         return inventoryService.saveWithAutoExpiry(inv);
     }
 
