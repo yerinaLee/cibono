@@ -1,5 +1,6 @@
 package com.cibono.cibono_api.web;
 
+import com.cibono.cibono_api.common.UserContext;
 import com.cibono.cibono_api.domain.NotificationConfig;
 import com.cibono.cibono_api.domain.PushToken;
 import com.cibono.cibono_api.repository.NotificationConfigRepository;
@@ -35,7 +36,16 @@ public class NotificationAdminController {
 		if (token == null || token.isBlank()) {
 			return ResponseEntity.badRequest().build();
 		}
-		tokenRepo.findByToken(token).orElseGet(() -> tokenRepo.save(new PushToken(token)));
+		Long userId = UserContext.userId();
+		PushToken pt = tokenRepo.findByToken(token).orElseGet(() -> {
+			PushToken newToken = new PushToken(token);
+			newToken.setUserId(userId);
+			return tokenRepo.save(newToken);
+		});
+		if (pt.getUserId() == null) {
+			pt.setUserId(userId);
+			tokenRepo.save(pt);
+		}
 		return ResponseEntity.ok().build();
 	}
 	
@@ -78,6 +88,7 @@ public class NotificationAdminController {
 			config.setCronExpression(req.getCronExpression());
 			config.setTimezone(req.getTimezone());
 			config.setEnabled(req.isEnabled());
+			if (req.getMealType() != null) config.setMealType(req.getMealType());
 			NotificationConfig saved = configRepo.save(config);
 			scheduler.scheduleConfig(saved); // 활성이면 재등록, 비활성이면 취소
 			return ResponseEntity.ok(saved);

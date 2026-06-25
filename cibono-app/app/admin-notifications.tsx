@@ -32,6 +32,7 @@ type NotificationConfig = {
   cronExpression: string;
   timezone: string;
   enabled: boolean;
+  mealType: string;
   createdAt: string;
 };
 
@@ -58,9 +59,16 @@ const EMPTY_FORM = {
   cronExpression: "0 0 18 * * *",
   timezone: "Asia/Seoul",
   enabled: true,
+  mealType: "DINNER",
 };
 
-const TIME_PRESETS = [
+const LUNCH_PRESETS = [
+  { label: "11:30", cron: "0 30 11 * * *" },
+  { label: "12:00", cron: "0 0 12 * * *" },
+  { label: "12:30", cron: "0 30 12 * * *" },
+];
+
+const DINNER_PRESETS = [
   { label: "17:00", cron: "0 0 17 * * *" },
   { label: "17:30", cron: "0 30 17 * * *" },
   { label: "18:00", cron: "0 0 18 * * *" },
@@ -108,6 +116,7 @@ export default function AdminNotificationsScreen() {
       cronExpression: cfg.cronExpression,
       timezone: cfg.timezone,
       enabled: cfg.enabled,
+      mealType: cfg.mealType ?? "DINNER",
     });
     setShowForm(true);
   };
@@ -178,6 +187,24 @@ export default function AdminNotificationsScreen() {
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+          {/* 식사 유형 */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>식사 유형</Text>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+              {(["LUNCH", "DINNER"] as const).map((type) => (
+                <Pressable
+                  key={type}
+                  onPress={() => setForm((p) => ({ ...p, mealType: type }))}
+                  style={[styles.preset, { flex: 1, justifyContent: "center" }, form.mealType === type && styles.presetActive]}
+                >
+                  <Text style={[styles.presetText, form.mealType === type && styles.presetTextActive]}>
+                    {type === "LUNCH" ? "🍱 점심" : "🍽️ 저녁"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
           {/* 제목 */}
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>알림 제목</Text>
@@ -205,19 +232,13 @@ export default function AdminNotificationsScreen() {
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>발송 시간</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
-              {TIME_PRESETS.map((p) => (
+              {(form.mealType === "LUNCH" ? LUNCH_PRESETS : DINNER_PRESETS).map((p) => (
                 <Pressable
                   key={p.cron}
                   onPress={() => setForm((prev) => ({ ...prev, cronExpression: p.cron }))}
-                  style={[
-                    styles.preset,
-                    form.cronExpression === p.cron && styles.presetActive,
-                  ]}
+                  style={[styles.preset, form.cronExpression === p.cron && styles.presetActive]}
                 >
-                  <Text style={[
-                    styles.presetText,
-                    form.cronExpression === p.cron && styles.presetTextActive,
-                  ]}>
+                  <Text style={[styles.presetText, form.cronExpression === p.cron && styles.presetTextActive]}>
                     {p.label}
                   </Text>
                 </Pressable>
@@ -229,9 +250,7 @@ export default function AdminNotificationsScreen() {
               style={[styles.fieldInput, { marginTop: 8 }]}
               placeholder="0 0 18 * * * (직접 입력)"
             />
-            <Text style={styles.fieldHint}>
-              Spring cron: 초 분 시 일 월 요일
-            </Text>
+            <Text style={styles.fieldHint}>Spring cron: 초 분 시 일 월 요일</Text>
           </View>
 
           {/* 활성화 토글 */}
@@ -281,9 +300,16 @@ export default function AdminNotificationsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{cfg.title}</Text>
                   <Text style={styles.cardMeta}>{cfg.bodyTemplate}</Text>
-                  <View style={[styles.timeBadge, !cfg.enabled && { opacity: 0.4 }]}>
-                    <MaterialIcons name="schedule" size={12} color={THEME.brand} />
-                    <Text style={styles.timeBadgeText}>{cronToLabel(cfg.cronExpression)}</Text>
+                  <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                    <View style={[styles.timeBadge, !cfg.enabled && { opacity: 0.4 }]}>
+                      <MaterialIcons name="schedule" size={12} color={THEME.brand} />
+                      <Text style={styles.timeBadgeText}>{cronToLabel(cfg.cronExpression)}</Text>
+                    </View>
+                    <View style={[styles.timeBadge, { backgroundColor: "rgba(127,183,126,0.08)" }]}>
+                      <Text style={styles.timeBadgeText}>
+                        {cfg.mealType === "LUNCH" ? "🍱 점심" : "🍽️ 저녁"}
+                      </Text>
+                    </View>
                   </View>
                 </View>
                 <Switch

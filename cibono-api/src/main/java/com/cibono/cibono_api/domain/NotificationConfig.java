@@ -35,7 +35,11 @@ public class NotificationConfig {
 	
 	@Column(nullable = false)
 	private boolean enabled = true;
-	
+
+	/** LUNCH 또는 DINNER — 사용자 알림 수신 설정 필터링에 사용 */
+	@Column(name = "meal_type", nullable = false, length = 10)
+	private String mealType = "DINNER";
+
 	@Column(name = "created_at")
 	private LocalDateTime createdAt = LocalDateTime.now();
 	
