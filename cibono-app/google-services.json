@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "396865193220",
+    "project_id": "cibono-6a413",
+    "storage_bucket": "cibono-6a413.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396865193220:android:ccd96e3ba4518352563c51",
+        "android_client_info": {
+          "package_name": "com.cibono.android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCRmNGn7dCxrf_vJLc-wceroYkzZznrtnU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

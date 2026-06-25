@@ -561,18 +561,17 @@ export default function InventoryScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       base64: true,
-      quality: 0.9,
+      quality: 1,
     });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
     setScanItems([]);
     setScanLoading(true);
     try {
-      // Gemini Vision API — 이미지 직접 전송 (한국어 영수증 정확도 높음, 503 시 서버에서 retry)
       const res = await api.post<
         { itemName: string; quantity: number; unit: string }[]
       >(
-        "/inventory/scan",
+        "/inventory/scan-korie",
         { imageBase64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" },
         { timeout: 90000 },
       );
