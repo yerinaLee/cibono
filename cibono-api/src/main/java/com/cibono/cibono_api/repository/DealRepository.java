@@ -7,13 +7,15 @@ import java.util.List;
 import java.time.LocalDate;
 
 public interface DealRepository extends JpaRepository<Deal, Long> {
-
-    List<Deal> findByStartsAtLessThanEqualAndEndsAtGreaterThanEqual(LocalDate startsAtBound, LocalDate endsAtBound);
-
-    List<Deal> findByItemNameContainingIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
-            String keyword, LocalDate startsAtBound, LocalDate endsAtBound);
-
-    List<Deal> findByItemNameIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
-            String itemName, LocalDate startsAtBound, LocalDate endsAtBound);
-
+	
+	List<Deal> findByStartsAtLessThanEqualAndEndsAtGreaterThanEqual(LocalDate startsAtBound, LocalDate endsAtBound);
+	
+	List<Deal> findByItemNameContainingIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
+			String keyword, LocalDate startsAtBound, LocalDate endsAtBound);
+	
+	List<Deal> findByItemNameIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
+			String itemName, LocalDate startsAtBound, LocalDate endsAtBound);
+	
+	boolean existsByStoreIdAndItemNameIgnoreCaseAndStartsAt(Long storeId, String itemName, LocalDate startsAt);
+	
 }

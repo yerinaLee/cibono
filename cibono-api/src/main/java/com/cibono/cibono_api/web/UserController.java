@@ -8,12 +8,13 @@ import java.util.Map;
 
 @RestController
 public class UserController {
-
-    @GetMapping("/me")
-    public Map<String, Object> me() {
-        return Map.of(
-            "userId", UserContext.userId(),
-            "role", UserContext.role()
-        );
-    }
+	
+	@GetMapping("/me")
+	public Map<String, Object> me() {
+		return Map.of(
+				"userId", UserContext.userId(),
+				"role", UserContext.role()
+		);
+	}
+	
 }

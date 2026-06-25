@@ -9,28 +9,26 @@ import java.time.LocalDate;
 
 @Service
 public class InventoryService {
-
-    private final InventoryRepository inventoryRepository;
-    private final ItemShelfLifeRepository itemShelfLifeRepository;
-
-    public InventoryService(InventoryRepository inventoryRepository,
-                            ItemShelfLifeRepository itemShelfLifeRepository) {
-        this.inventoryRepository = inventoryRepository;
-        this.itemShelfLifeRepository = itemShelfLifeRepository;
-    }
-
-    public Inventory saveWithAutoExpiry(Inventory inv) {
-        if (inv.getPurchasedAt() == null) {
-            inv.setPurchasedAt(LocalDate.now());
-        }
-
-        if (inv.getExpiresAt() == null) {
-            itemShelfLifeRepository.findByItemName(inv.getItemName())
-                    .ifPresent(rule ->
-                            inv.setExpiresAt(inv.getPurchasedAt().plusDays(rule.getShelfLifeDays()))
-                    );
-        }
-
-        return inventoryRepository.save(inv);
-    }
+	
+	private final InventoryRepository inventoryRepository;
+	private final ItemShelfLifeRepository itemShelfLifeRepository;
+	
+	public InventoryService(InventoryRepository inventoryRepository, ItemShelfLifeRepository itemShelfLifeRepository) {
+		this.inventoryRepository = inventoryRepository;
+		this.itemShelfLifeRepository = itemShelfLifeRepository;
+	}
+	
+	public Inventory saveWithAutoExpiry(Inventory inv) {
+		if (inv.getPurchasedAt() == null) {
+			inv.setPurchasedAt(LocalDate.now());
+		}
+		
+		if (inv.getExpiresAt() == null) {
+			itemShelfLifeRepository.findByItemName(inv.getItemName())
+					.ifPresent(rule -> inv.setExpiresAt(inv.getPurchasedAt().plusDays(rule.getShelfLifeDays())));
+		}
+		
+		return inventoryRepository.save(inv);
+	}
+	
 }

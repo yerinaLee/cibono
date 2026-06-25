@@ -1,22 +1,31 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
-    FlatList,
-    Modal,
-    Platform,
-    Pressable,
-    RefreshControl,
-    SafeAreaView,
-    Text,
-    TextInput,
-    View,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { api, explainNetworkHint } from "../../src/api/client";
+
+type Store = {
+  id: number;
+  name: string;
+  region: string | null;
+};
 
 type Rule = {
   id: number;
   itemName: string;
   anchorPrice: number;
   active: boolean; // MVP: 로컬 토글(UI)
+  storeId?: number | null;
+  storeName?: string;
 };
 
 const THEME = {
@@ -42,6 +51,7 @@ export default function AlertRulesScreen() {
     { id: 3, itemName: "대파 1단", anchorPrice: 1800, active: true },
     { id: 4, itemName: "닭가슴살 1kg", anchorPrice: 9900, active: false },
   ]);
+  const [stores, setStores] = useState<Store[]>([]);
 
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
@@ -51,6 +61,8 @@ export default function AlertRulesScreen() {
   const [isOpen, setIsOpen] = useState(false);
   const [itemName, setItemName] = useState("");
   const [anchorPrice, setAnchorPrice] = useState("");
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
+  const [storePickerOpen, setStorePickerOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -65,6 +77,11 @@ export default function AlertRulesScreen() {
     [rules],
   );
 
+  const selectedStoreName = useMemo(
+    () => stores.find((s) => s.id === selectedStoreId)?.name ?? null,
+    [selectedStoreId, stores],
+  );
+
   // NOTE: 서버에 GET 규칙 목록이 없을 수 있어서 일단 try만.
   const load = useCallback(async () => {
     setError("");
@@ -73,6 +90,10 @@ export default function AlertRulesScreen() {
       // 향후 서버에 GET /alerts/rules 같은 API가 생기면 여기에 붙이기.
       // const res = await api.get<Rule[]>("/alerts/rules");
       // setRules(res.data.map(r => ({...r, active:true})));
+
+      // 마트 목록은 서버에서 불러옴
+      const storesRes = await api.get<{ data: Store[] }>("/stores");
+      setStores(storesRes.data.data);
     } catch (e: any) {
       // 지금은 로컬 UI로 동작 가능하니 치명 에러로 보지 않음
       setError(explainNetworkHint(e));
@@ -114,22 +135,27 @@ export default function AlertRulesScreen() {
       const res = await api.post("/alerts/rules", {
         itemName: name,
         anchorPrice: price,
+        storeId: selectedStoreId,
       });
 
       // 서버가 반환한 id가 있으면 사용, 없으면 임시 id
       const newId = res?.data?.id ?? Date.now();
+      const storeName = selectedStoreId
+        ? stores.find((s) => s.id === selectedStoreId)?.name
+        : undefined;
       setRules((prev) => [
-        { id: newId, itemName: name, anchorPrice: price, active: true },
+        { id: newId, itemName: name, anchorPrice: price, active: true, storeId: selectedStoreId, storeName },
         ...prev,
       ]);
 
       setIsOpen(false);
       setItemName("");
       setAnchorPrice("");
+      setSelectedStoreId(null);
     } catch (e: any) {
       setError(explainNetworkHint(e));
     }
-  }, [anchorPrice, itemName]);
+  }, [anchorPrice, itemName, selectedStoreId, stores]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
@@ -230,8 +256,7 @@ export default function AlertRulesScreen() {
                 </View>
               </View>
               <Text style={styles.itemSub}>
-                조건: 기준가 이하 · 상태: {item.active ? "활성" : "비활성"} (MVP
-                UI)
+                {item.storeName ? `🏪 ${item.storeName}` : "전체 마트"} · 상태: {item.active ? "활성" : "비활성"} (MVP UI)
               </Text>
 
               <View style={{ height: 10 }} />
@@ -351,6 +376,19 @@ export default function AlertRulesScreen() {
                 />
               </View>
 
+              {/* 마트 선택 */}
+              <View style={styles.field}>
+                <Text style={styles.label}>마트 선택 (선택 안 하면 전체 마트)</Text>
+                <Pressable
+                  onPress={() => setStorePickerOpen(true)}
+                  style={[styles.input, { justifyContent: "center" }]}
+                >
+                  <Text style={{ color: selectedStoreId ? THEME.text : "rgba(31,41,55,0.45)", fontSize: 14 }}>
+                    {selectedStoreName ?? "전체 마트"}
+                  </Text>
+                </Pressable>
+              </View>
+
               <View style={styles.tip}>
                 <View style={styles.tipBubble}>
                   <Text style={{ fontSize: 14 }}>💡</Text>
@@ -387,6 +425,46 @@ export default function AlertRulesScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* 마트 선택 모달 */}
+      <Modal
+        transparent
+        visible={storePickerOpen}
+        animationType="fade"
+        onRequestClose={() => setStorePickerOpen(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setStorePickerOpen(false)}>
+          <View style={[styles.sheet, { maxHeight: "60%" }]}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>마트 선택</Text>
+            </View>
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 20 }}>
+              <Pressable
+                onPress={() => { setSelectedStoreId(null); setStorePickerOpen(false); }}
+                style={[styles.storeOption, !selectedStoreId && styles.storeOptionSelected]}
+              >
+                <Text style={[styles.storeOptionText, !selectedStoreId && { color: THEME.brandInk, fontWeight: "900" }]}>
+                  전체 마트
+                </Text>
+                {!selectedStoreId && <Text style={{ color: THEME.brand }}>✓</Text>}
+              </Pressable>
+              {stores.map((s) => (
+                <Pressable
+                  key={s.id}
+                  onPress={() => { setSelectedStoreId(s.id); setStorePickerOpen(false); }}
+                  style={[styles.storeOption, selectedStoreId === s.id && styles.storeOptionSelected]}
+                >
+                  <Text style={[styles.storeOptionText, selectedStoreId === s.id && { color: THEME.brandInk, fontWeight: "900" }]}>
+                    {s.name}
+                  </Text>
+                  {selectedStoreId === s.id && <Text style={{ color: THEME.brand }}>✓</Text>}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -641,4 +719,16 @@ const styles: any = {
   },
   tipTitle: { fontSize: 13, fontWeight: "900", color: THEME.text },
   tipText: { marginTop: 2, fontSize: 12, color: THEME.muted, lineHeight: 16 },
+
+  storeOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  storeOptionSelected: { backgroundColor: THEME.greenBg },
+  storeOptionText: { fontSize: 14, color: THEME.text },
 };

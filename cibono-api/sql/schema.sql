@@ -27,9 +27,12 @@ CREATE TABLE IF NOT EXISTS food_category (
 
 -- 3) 마트/스토어
 CREATE TABLE IF NOT EXISTS store (
-    id     BIGSERIAL    PRIMARY KEY,
-    name   VARCHAR(100) NOT NULL,
-    region VARCHAR(100)
+    id        BIGSERIAL    PRIMARY KEY,
+    name      VARCHAR(100) NOT NULL,
+    region    VARCHAR(100),
+    source    VARCHAR(30),
+    store_no  VARCHAR(20),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 -- 3) 구매 기록 (언제, 얼마에 샀는지)
@@ -83,6 +86,7 @@ CREATE TABLE IF NOT EXISTS price_alert (
     threshold_type  VARCHAR(10)    NOT NULL DEFAULT 'LTE',  -- LTE / UNDER_PCT
     threshold_value NUMERIC(10, 2),
     is_enabled      BOOLEAN        NOT NULL DEFAULT TRUE,
+    store_id        BIGINT         REFERENCES store(id),
     created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW()
 );
 

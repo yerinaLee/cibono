@@ -9,23 +9,24 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
-
-    private final FirebaseAuthFilter firebaseAuthFilter;
-
-    public SecurityConfig(FirebaseAuthFilter firebaseAuthFilter) {
-        this.firebaseAuthFilter = firebaseAuthFilter;
-    }
-
-    @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .cors(Customizer.withDefaults())
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-            .httpBasic(basic -> basic.disable())
-            .formLogin(form -> form.disable())
-            .addFilterBefore(firebaseAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
-    }
+	
+	private final FirebaseAuthFilter firebaseAuthFilter;
+	
+	public SecurityConfig(FirebaseAuthFilter firebaseAuthFilter) {
+		this.firebaseAuthFilter = firebaseAuthFilter;
+	}
+	
+	@Bean
+	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+		http
+			.csrf(csrf -> csrf.disable())
+			.cors(Customizer.withDefaults())
+			.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+			.httpBasic(basic -> basic.disable())
+			.formLogin(form -> form.disable())
+			.addFilterBefore(firebaseAuthFilter, UsernamePasswordAuthenticationFilter.class);
+		
+		return http.build();
+	}
+	
 }
