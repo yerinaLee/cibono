@@ -1,14 +1,16 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type Deal = {
@@ -41,6 +43,8 @@ export default function DealsScreen() {
 
   // UI-only filters (MVP: 서버 파라미터 없이 프론트 필터만)
   const [search, setSearch] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [store, setStore] = useState("전체");
   const [period, setPeriod] = useState("오늘");
 
@@ -81,45 +85,156 @@ export default function DealsScreen() {
     return arr;
   }, [items, period, search, store]);
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
-      {/* Topbar */}
-      <View
-        style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}
-      >
-        <View style={styles.topbar}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.h2}>Deals</Text>
-            <Text style={styles.sub}>오늘 유효한 특가 모아보기</Text>
-          </View>
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (store !== "전체") n++;
+    if (period !== "오늘") n++;
+    return n;
+  }, [store, period]);
 
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: THEME.bg }}
+      edges={["bottom", "left", "right"]}
+    >
+      {/* 고정 헤더 (공유 AppHeader) */}
+      <AppHeader title="특가" subtitle="금주의 특가 모아보기" />
+
+      {/* 고정 영역 (툴바·검색·필터) */}
+      <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
+        {/* 검색·추가 툴바 (냉장고와 동일) */}
+        <View style={styles.toolbar}>
+          <Pressable
+            onPress={() => setShowSearch((p) => !p)}
+            style={({ pressed }) => [
+              styles.iconCircle,
+              showSearch && styles.iconCircleActive,
+              pressed && { opacity: 0.85 },
+            ]}
+            accessibilityLabel="검색"
+          >
+            <MaterialIcons
+              name="search"
+              size={20}
+              color={showSearch ? THEME.brand : THEME.text}
+            />
+          </Pressable>
+          <View>
+            <Pressable
+              onPress={() => setFilterOpen((p) => !p)}
+              style={({ pressed }) => [
+                styles.iconCircle,
+                filterOpen && styles.iconCircleActive,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityLabel="필터"
+            >
+              <MaterialIcons
+                name="tune"
+                size={20}
+                color={filterOpen ? THEME.brand : THEME.text}
+              />
+            </Pressable>
+            {activeFilterCount > 0 && <View style={styles.badgeDot} />}
+          </View>
+          <View style={{ flex: 1 }} />
           <Pressable
             onPress={() => router.push("/(tabs)/alerts_rules")}
             style={({ pressed }) => [
-              styles.btnPrimary,
-              pressed && { opacity: 0.9 },
+              styles.iconCircleAdd,
+              pressed && { opacity: 0.85 },
             ]}
+            accessibilityLabel="규칙 추가"
           >
-            <Text style={styles.btnPrimaryText}>규칙 추가</Text>
+            <MaterialIcons name="add" size={22} color={THEME.brandInk} />
           </Pressable>
         </View>
 
-        {/* Search */}
-        <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>⌕</Text>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="품목/매장 검색 (UI 예시)"
-            placeholderTextColor="rgba(31,41,55,0.45)"
-            style={styles.searchInput}
-          />
-          {search.length > 0 ? (
-            <Pressable onPress={() => setSearch("")} style={styles.clearBtn}>
-              <Text style={{ color: THEME.muted, fontWeight: "900" }}>×</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {/* 인라인 검색창 */}
+        {showSearch && (
+          <View style={styles.searchBox}>
+            <Text style={styles.searchIcon}>⌕</Text>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="품목/매장 검색 (UI 예시)"
+              placeholderTextColor="rgba(31,41,55,0.45)"
+              style={styles.searchInput}
+              autoFocus
+            />
+            {search.length > 0 ? (
+              <Pressable onPress={() => setSearch("")} style={styles.clearBtn}>
+                <Text style={{ color: THEME.muted, fontWeight: "900" }}>×</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+
+        {/* 필터 패널 (냉장고와 동일) */}
+        {filterOpen && (
+          <View style={styles.filterPanel}>
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>매장</Text>
+              {(["전체", "쿠팡"] as const).map((k) => (
+                <Pressable
+                  key={k}
+                  onPress={() => setStore(k)}
+                  style={({ pressed }) => [
+                    styles.filterChip,
+                    store === k && styles.filterChipActive,
+                    pressed && { opacity: 0.9 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      store === k && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {k}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>기간</Text>
+              {(["오늘", "이번주"] as const).map((k) => (
+                <Pressable
+                  key={k}
+                  onPress={() => setPeriod(k)}
+                  style={({ pressed }) => [
+                    styles.filterChip,
+                    period === k && styles.filterChipActive,
+                    pressed && { opacity: 0.9 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      period === k && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {k}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.filterRow}>
+              <Pressable
+                onPress={() => {
+                  setStore("전체");
+                  setPeriod("오늘");
+                }}
+                style={({ pressed }) => [
+                  styles.btnGhost,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <Text style={styles.btnGhostText}>필터 초기화</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* Section head */}
         <View style={styles.sectionHead}>
@@ -137,41 +252,6 @@ export default function DealsScreen() {
               총 {filtered.length}건
             </Text>
           </View>
-        </View>
-
-        {/* Filters row (UI only) */}
-        <View style={styles.filters}>
-          <View style={styles.filterChip}>
-            <Text style={styles.filterLabel}>매장</Text>
-            <Pressable
-              onPress={() => setStore(store === "전체" ? "쿠팡" : "전체")}
-              style={styles.filterValueBtn}
-            >
-              <Text style={styles.filterValue}>{store}</Text>
-            </Pressable>
-          </View>
-          <View style={styles.filterChip}>
-            <Text style={styles.filterLabel}>기간</Text>
-            <Pressable
-              onPress={() => setPeriod(period === "오늘" ? "이번주" : "오늘")}
-              style={styles.filterValueBtn}
-            >
-              <Text style={styles.filterValue}>{period}</Text>
-            </Pressable>
-          </View>
-          <Pressable
-            onPress={() => {
-              setSearch("");
-              setStore("전체");
-              setPeriod("오늘");
-            }}
-            style={({ pressed }) => [
-              styles.btnGhost,
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <Text style={styles.btnGhostText}>필터 초기화</Text>
-          </Pressable>
         </View>
 
         {/* Error banner */}
@@ -228,11 +308,12 @@ export default function DealsScreen() {
             <Pressable
               onPress={() => router.push("/(tabs)/alerts_rules")}
               style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && { opacity: 0.9 },
+                styles.iconCircleAdd,
+                pressed && { opacity: 0.85 },
               ]}
+              accessibilityLabel="규칙에 추가"
             >
-              <Text style={{ fontWeight: "900", color: THEME.text }}>＋</Text>
+              <MaterialIcons name="add" size={20} color={THEME.brandInk} />
             </Pressable>
           </View>
         )}
@@ -306,32 +387,52 @@ const styles: any = {
   },
   badgeText: { fontSize: 12, fontWeight: "900" },
 
-  filters: {
-    marginTop: 12,
+  filterPanel: {
+    marginTop: 8,
     padding: 12,
-    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.65)",
     borderWidth: 1,
     borderColor: THEME.border,
-    backgroundColor: "rgba(255,255,255,0.82)",
+    borderRadius: 14,
+    gap: 10,
+  },
+  filterRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
     alignItems: "center",
+    gap: 8,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: THEME.muted,
+    marginRight: 4,
   },
   filterChip: {
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: THEME.border,
     backgroundColor: "rgba(255,255,255,0.9)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
   },
-  filterLabel: { fontSize: 12, fontWeight: "900", color: THEME.muted },
-  filterValueBtn: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  filterValue: { fontSize: 12, fontWeight: "900", color: THEME.text },
+  filterChipActive: {
+    borderColor: "rgba(127,183,126,0.4)",
+    backgroundColor: "rgba(127,183,126,0.18)",
+  },
+  filterChipText: { fontSize: 12, fontWeight: "900", color: THEME.muted },
+  filterChipTextActive: { color: THEME.text },
+  badgeDot: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.brand,
+    borderWidth: 1,
+    borderColor: THEME.bg,
+  },
 
   btnPrimary: {
     paddingHorizontal: 14,
@@ -406,6 +507,35 @@ const styles: any = {
     borderWidth: 1,
     borderColor: THEME.border,
     backgroundColor: "rgba(255,255,255,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCircleActive: {
+    backgroundColor: "rgba(127,183,126,0.20)",
+    borderColor: "rgba(127,183,126,0.4)",
+  },
+  iconCircleAdd: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(15,31,22,0.15)",
+    backgroundColor: THEME.brand,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -1,6 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import { useVideoPlayer, VideoView } from "expo-video";
 import { router } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Image,
@@ -504,6 +504,9 @@ const styles: any = {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    // 텍스트 헤더(AppHeader)와 버튼 세로 위치를 맞추기 위해 상단 정렬
+    alignSelf: "flex-start",
+    marginTop: 4,
   },
   iconBtn: {
     width: 36,

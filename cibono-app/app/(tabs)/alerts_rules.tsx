@@ -1,3 +1,4 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
@@ -5,12 +6,13 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type Store = {
@@ -54,6 +56,7 @@ export default function AlertRulesScreen() {
   const [stores, setStores] = useState<Store[]>([]);
 
   const [search, setSearch] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -158,44 +161,64 @@ export default function AlertRulesScreen() {
   }, [anchorPrice, itemName, selectedStoreId, stores]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
-      <View
-        style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}
-      >
-        {/* Topbar */}
-        <View style={styles.topbar}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.h2}>Alert Rules</Text>
-            <Text style={styles.sub}>기준가 대비 특가 감지 규칙 관리</Text>
-          </View>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: THEME.bg }}
+      edges={["bottom", "left", "right"]}
+    >
+      {/* 고정 헤더 (공유 AppHeader) */}
+      <AppHeader title="알림 관리" subtitle="기준가 대비 특가 감지 알림 규칙 관리" />
 
+      {/* 고정 영역 (툴바·검색·섹션) */}
+      <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
+        {/* 검색·추가 툴바 (냉장고와 동일) */}
+        <View style={styles.toolbar}>
+          <Pressable
+            onPress={() => setShowSearch((p) => !p)}
+            style={({ pressed }) => [
+              styles.iconCircle,
+              showSearch && styles.iconCircleActive,
+              pressed && { opacity: 0.85 },
+            ]}
+            accessibilityLabel="검색"
+          >
+            <MaterialIcons
+              name="search"
+              size={20}
+              color={showSearch ? THEME.brand : THEME.text}
+            />
+          </Pressable>
+          <View style={{ flex: 1 }} />
           <Pressable
             onPress={() => setIsOpen(true)}
             style={({ pressed }) => [
-              styles.btnPrimary,
-              pressed && { opacity: 0.9 },
+              styles.iconCircleAdd,
+              pressed && { opacity: 0.85 },
             ]}
+            accessibilityLabel="새 규칙"
           >
-            <Text style={styles.btnPrimaryText}>새 규칙</Text>
+            <MaterialIcons name="add" size={22} color={THEME.brandInk} />
           </Pressable>
         </View>
 
-        {/* Search */}
-        <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>⌕</Text>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="규칙 검색 (UI 예시)"
-            placeholderTextColor="rgba(31,41,55,0.45)"
-            style={styles.searchInput}
-          />
-          {search.length > 0 ? (
-            <Pressable onPress={() => setSearch("")} style={styles.clearBtn}>
-              <Text style={{ color: THEME.muted, fontWeight: "900" }}>×</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {/* 인라인 검색창 */}
+        {showSearch && (
+          <View style={styles.searchBox}>
+            <Text style={styles.searchIcon}>⌕</Text>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="규칙 검색 (UI 예시)"
+              placeholderTextColor="rgba(31,41,55,0.45)"
+              style={styles.searchInput}
+              autoFocus
+            />
+            {search.length > 0 ? (
+              <Pressable onPress={() => setSearch("")} style={styles.clearBtn}>
+                <Text style={{ color: THEME.muted, fontWeight: "900" }}>×</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
 
         <View style={styles.sectionHead}>
           <View>
@@ -227,7 +250,7 @@ export default function AlertRulesScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
-        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 20 }}
+        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 110 }}
         renderItem={({ item }) => (
           <View style={[styles.itemCard, !item.active && { opacity: 0.55 }]}>
             <View style={styles.itemIcon}>
@@ -326,13 +349,11 @@ export default function AlertRulesScreen() {
         animationType="fade"
         onRequestClose={() => setIsOpen(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHandle} />
-
-            <View style={styles.sheetHeader}>
+        <View style={styles.modalOverlayCenter}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sheetTitle}>새 규칙 추가</Text>
+                <Text style={styles.modalTitle}>새 규칙 추가</Text>
                 <Text style={styles.sheetDesc}>
                   품목명 · 기준가 · 조건을 설정해요
                 </Text>
@@ -348,7 +369,11 @@ export default function AlertRulesScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.sheetBody}>
+            <ScrollView
+              style={styles.modalScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.modalBody}>
               <View style={styles.field}>
                 <Text style={styles.label}>품목명</Text>
                 <TextInput
@@ -400,9 +425,10 @@ export default function AlertRulesScreen() {
                   </Text>
                 </View>
               </View>
-            </View>
+              </View>
+            </ScrollView>
 
-            <View style={styles.sheetFooter}>
+            <View style={styles.modalFooter}>
               <Pressable
                 onPress={() => setIsOpen(false)}
                 style={({ pressed }) => [
@@ -522,6 +548,35 @@ const styles: any = {
   },
   badgeText: { fontSize: 12, fontWeight: "900" },
 
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCircleActive: {
+    backgroundColor: "rgba(127,183,126,0.20)",
+    borderColor: "rgba(127,183,126,0.4)",
+  },
+  iconCircleAdd: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(15,31,22,0.15)",
+    backgroundColor: THEME.brand,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   btnPrimary: {
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -552,7 +607,7 @@ const styles: any = {
   errorText: { color: "#B42318", fontSize: 12, fontWeight: "700" },
 
   itemCard: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME.border,
@@ -646,6 +701,43 @@ const styles: any = {
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(17,24,39,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: "rgba(17,24,39,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  modal: {
+    width: "100%",
+    maxWidth: 520,
+    maxHeight: "85%",
+    borderRadius: 18,
+    backgroundColor: THEME.surface,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    overflow: "hidden",
+  },
+  modalScroll: { flexGrow: 0 },
+  modalHeader: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  modalTitle: { fontSize: 16, fontWeight: "900", color: THEME.text },
+  modalBody: { padding: 14, gap: 12 },
+  modalFooter: {
+    padding: 14,
+    borderTopWidth: 1,
+    borderTopColor: THEME.border,
+    flexDirection: "row",
     justifyContent: "flex-end",
   },
   sheet: {

@@ -656,10 +656,10 @@ export default function InventoryScreen() {
       style={{ flex: 1, backgroundColor: THEME.bg }}
       edges={["bottom", "left", "right"]}
     >
+      <AppHeader title="냉장고" subtitle="냉장고 재고 관리" />
+
       {/* ── 고정 헤더 (FlatList 밖) — horizontal ScrollView 너비 버그 방지 ── */}
       <View style={styles.headerSection}>
-        <AppHeader title="냉장고" subtitle="냉장고 재고 관리" />
-
         {/* 검색·필터·스캔·추가 툴바 */}
         <View style={styles.toolbar}>
           <Pressable

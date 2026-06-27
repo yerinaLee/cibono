@@ -25,7 +25,7 @@ export default function AppHeader({ title, subtitle, rightExtra }: Props) {
 
   return (
     <View style={[styles.topbar, { paddingTop: insets.top + 6 }]}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 , paddingLeft: 6}}>
         <Text style={styles.h2}>{title}</Text>
         {!!subtitle && <Text style={styles.sub}>{subtitle}</Text>}
       </View>

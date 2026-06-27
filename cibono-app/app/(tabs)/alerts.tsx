@@ -1,14 +1,16 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type AlertEvent = {
@@ -49,6 +51,7 @@ export default function AlertsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const [tab, setTab] = useState<"unread" | "confirmed">("unread"); // UI tab
 
   const load = useCallback(async () => {
@@ -120,65 +123,42 @@ export default function AlertsScreen() {
   }, [dealMap, items, search, tab]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
-      <View
-        style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}
-      >
-        {/* Topbar */}
-        <View style={styles.topbar}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.h2}>Alerts</Text>
-            <Text style={styles.sub}>특가 알림 이벤트(미확인/확인)</Text>
-          </View>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: THEME.bg }}
+      edges={["bottom", "left", "right"]}
+    >
+      {/* 고정 헤더 (공유 AppHeader) */}
+      <AppHeader title="알림" subtitle="내가 정하는 식재료 특가 알림" />
 
+      {/* 고정 영역 (툴바·검색·탭·필터) */}
+      <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
+        {/* 검색·추가 툴바 (냉장고와 동일) */}
+        <View style={styles.toolbar}>
           <Pressable
-            onPress={() => router.push("/(tabs)/alerts_rules")}
+            onPress={() => setShowSearch((p) => !p)}
             style={({ pressed }) => [
-              styles.btnPrimary,
-              pressed && { opacity: 0.9 },
+              styles.iconCircle,
+              showSearch && styles.iconCircleActive,
+              pressed && { opacity: 0.85 },
             ]}
+            accessibilityLabel="검색"
           >
-            <Text style={styles.btnPrimaryText}>규칙 관리</Text>
+            <MaterialIcons
+              name="search"
+              size={20}
+              color={showSearch ? THEME.brand : THEME.text}
+            />
           </Pressable>
-        </View>
-
-        {/* Search */}
-        <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>⌕</Text>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="알림 검색 (UI 예시)"
-            placeholderTextColor="rgba(31,41,55,0.45)"
-            style={styles.searchInput}
-          />
-          {search.length > 0 ? (
-            <Pressable onPress={() => setSearch("")} style={styles.clearBtn}>
-              <Text style={{ color: THEME.muted, fontWeight: "900" }}>×</Text>
-            </Pressable>
-          ) : null}
-        </View>
-
-        {/* Section Head */}
-        <View style={styles.sectionHead}>
-          <View>
-            <Text style={styles.h3}>알림 이벤트</Text>
-            <Text style={styles.meta}>미확인은 강조 / 확인 처리 버튼</Text>
-          </View>
-          <View
-            style={[
-              styles.pill,
-              { backgroundColor: THEME.redBg, borderColor: THEME.redBd },
+          <Pressable
+            onPress={runScan}
+            style={({ pressed }) => [
+              styles.iconCircle,
+              pressed && { opacity: 0.85 },
             ]}
+            accessibilityLabel="스캔 실행"
           >
-            <Text style={[styles.pillText, { color: THEME.redInk }]}>
-              미확인 {unreadCount}
-            </Text>
-          </View>
-        </View>
-
-        {/* Tabs row */}
-        <View style={styles.tabsRow}>
+            <MaterialIcons name="radar" size={20} color={THEME.text} />
+          </Pressable>
           <View style={styles.tabs}>
             <Pressable
               onPress={() => setTab("unread")}
@@ -197,7 +177,6 @@ export default function AlertsScreen() {
                 미확인 ({unreadCount})
               </Text>
             </Pressable>
-
             <Pressable
               onPress={() => setTab("confirmed")}
               style={({ pressed }) => [
@@ -216,23 +195,55 @@ export default function AlertsScreen() {
               </Text>
             </Pressable>
           </View>
-
+          <View style={{ flex: 1 }} />
           <Pressable
             onPress={() => router.push("/(tabs)/alerts_rules")}
             style={({ pressed }) => [
-              styles.btnGhost,
-              pressed && { opacity: 0.9 },
+              styles.iconCircleAdd,
+              pressed && { opacity: 0.85 },
+            ]}
+            accessibilityLabel="규칙 관리"
+          >
+            <MaterialIcons name="add" size={22} color={THEME.brandInk} />
+          </Pressable>
+        </View>
+
+        {/* 인라인 검색창 */}
+        {showSearch && (
+          <View style={styles.searchBox}>
+            <Text style={styles.searchIcon}>⌕</Text>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="알림 검색 (UI 예시)"
+              placeholderTextColor="rgba(31,41,55,0.45)"
+              style={styles.searchInput}
+              autoFocus
+            />
+            {search.length > 0 ? (
+              <Pressable onPress={() => setSearch("")} style={styles.clearBtn}>
+                <Text style={{ color: THEME.muted, fontWeight: "900" }}>×</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+
+        {/* Section Head */}
+        <View style={styles.sectionHead}>
+          <View>
+            <Text style={styles.h3}>알림 이벤트</Text>
+            <Text style={styles.meta}>미확인은 강조 / 확인 처리 버튼</Text>
+          </View>
+          <View
+            style={[
+              styles.pill,
+              { backgroundColor: THEME.redBg, borderColor: THEME.redBd },
             ]}
           >
-            <Text style={styles.btnGhostText}>규칙 추가/편집</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={runScan}
-            style={({ pressed }) => [styles.btn, pressed && { opacity: 0.9 }]}
-          >
-            <Text style={styles.btnText}>스캔 실행</Text>
-          </Pressable>
+            <Text style={[styles.pillText, { color: THEME.redInk }]}>
+              미확인 {unreadCount}
+            </Text>
+          </View>
         </View>
 
         {/* Error banner */}
@@ -488,6 +499,35 @@ const styles: any = {
     borderWidth: 1,
     borderColor: THEME.border,
     backgroundColor: "rgba(255,255,255,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCircleActive: {
+    backgroundColor: "rgba(127,183,126,0.20)",
+    borderColor: "rgba(127,183,126,0.4)",
+  },
+  iconCircleAdd: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(15,31,22,0.15)",
+    backgroundColor: THEME.brand,
     alignItems: "center",
     justifyContent: "center",
   },
