@@ -1,0 +1,23 @@
+path: C:/Users/admin/Downloads/dataset
+train: train/train/images
+val: val/val/images
+test: test/test/images
+
+names:
+  0: Description
+  1: Quantity
+  2: TotalPrice
+  3: Price
+  4: Item
+  5: MerchantName
+  6: Total
+  7: Subtotal
+  8: TotalTax
+  9: TransactionDate
+  10: TransactionTime
+  11: Tip
+  12: MerchantPhoneNumber
+  13: ReceiptNumber
+  14: MerchantAddress
+  15: Item_barcode
+  16: ProductCode

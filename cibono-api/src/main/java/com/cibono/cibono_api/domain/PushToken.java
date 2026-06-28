@@ -20,10 +20,13 @@ public class PushToken {
 	
 	@Column(unique = true, nullable = false, length = 500)
 	private String token;
-	
+
+	@Column(name = "user_id")
+	private Long userId;
+
 	@Column(name = "registered_at")
 	private LocalDateTime registeredAt = LocalDateTime.now();
-	
+
 	public PushToken(String token) {
 		this.token = token;
 	}

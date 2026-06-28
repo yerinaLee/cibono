@@ -40,6 +40,11 @@ export default function ShoppingListScreen() {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [search, setSearch] = useState("");
+  const filtered = items.filter((x) =>
+    x.itemName.toLowerCase().includes(search.toLowerCase()),
+  );
+
   const [addOpen, setAddOpen] = useState(false);
   const [addName, setAddName] = useState("");
   const [addQty, setAddQty] = useState("1");
@@ -151,11 +156,26 @@ export default function ShoppingListScreen() {
         <Text style={styles.headerTitle}>쇼핑리스트</Text>
         <Pressable
           onPress={() => setAddOpen(true)}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.iconCircleAdd, pressed && { opacity: 0.85 }]}
         >
-          <MaterialIcons name="add" size={18} color={THEME.brandInk} />
-          <Text style={styles.addBtnText}>추가</Text>
+          <MaterialIcons name="add" size={22} color={THEME.brandInk} />
         </Pressable>
+      </View>
+      {/* 검색 */}
+      <View style={styles.searchBar}>
+        <MaterialIcons name="search" size={18} color={THEME.muted} />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="검색..."
+          placeholderTextColor="rgba(31,41,55,0.40)"
+          style={styles.searchInput}
+        />
+        {search.length > 0 && (
+          <Pressable onPress={() => setSearch("")} hitSlop={8}>
+            <MaterialIcons name="close" size={16} color={THEME.muted} />
+          </Pressable>
+        )}
       </View>
 
       {loading ? (
@@ -164,9 +184,9 @@ export default function ShoppingListScreen() {
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={filtered}
           keyExtractor={(x) => String(x.id)}
-          contentContainerStyle={{ padding: 14, paddingBottom: 60, gap: 10 }}
+          contentContainerStyle={{ padding: 14, paddingBottom: 24, gap: 10 }}
           ListEmptyComponent={
             <View style={styles.empty}>
               <MaterialIcons
@@ -477,6 +497,37 @@ const styles: any = {
   addBtnText: { fontSize: 13, fontWeight: "900", color: THEME.brandInk },
 
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 14,
+    marginVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: THEME.text,
+    padding: 0,
+  },
+
+  iconCircleAdd: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.brand,
+    borderWidth: 1,
+    borderColor: "rgba(15,31,22,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   row: {
     backgroundColor: "#FFFFFF",

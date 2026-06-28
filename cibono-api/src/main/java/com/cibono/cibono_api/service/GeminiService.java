@@ -181,7 +181,7 @@ public class GeminiService {
 	public List<ScannedItem> parseReceiptText(String ocrText) {
 		String prompt = """
 				아래는 마트 영수증 OCR에서 한국어만 추출한 텍스트입니다. OCR 인식 오류로 글자가 일부 틀릴 수 있습니다.
-				
+
 				[규칙]
 				1. 식재료(채소·과일·육류·수산·유제품·곡류·양념 등)에 해당하는 항목을 최대한 추출하세요.
 				2. OCR 오류로 글자가 약간 틀려도 식재료명으로 추정 가능하면 올바른 이름으로 교정하여 포함하세요.
@@ -191,9 +191,9 @@ public class GeminiService {
 				5. 수량 불명확 시 1, 단위 불명확 시 "개"로 설정하세요.
 				6. 식재료를 전혀 찾을 수 없을 때만 빈 배열 []을 반환하세요.
 				7. 마크다운 없이 JSON 배열만 반환하세요.
-				
+
 				응답 형식(이 형식만): [{"itemName":"재료명","quantity":숫자,"unit":"단위"}]
-				
+
 				OCR 텍스트:
 				""" + ocrText;
 		

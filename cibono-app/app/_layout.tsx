@@ -34,6 +34,12 @@ async function registerForPushNotifications(): Promise<string | null> {
   if (!Device.isDevice) return null;
   if (Platform.OS !== 'android') return null;
 
+  await Notifications.setNotificationChannelAsync('lunch', {
+    name: '점심 메뉴 추천',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#7FB77E',
+  });
   await Notifications.setNotificationChannelAsync('dinner', {
     name: '저녁 메뉴 추천',
     importance: Notifications.AndroidImportance.HIGH,
