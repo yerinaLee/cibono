@@ -290,7 +290,13 @@ INSERT INTO item_shelf_life (item_name, shelf_life_days) VALUES
 ON CONFLICT (item_name) DO NOTHING;
 
 -- -----------------------------------------------
--- 마트
+-- 전단지 크롤링 대상 마트 체인 (source 값으로 각 크롤러가 조회)
 -- -----------------------------------------------
-INSERT INTO store (name, region, source, store_no)
-VALUES ('이마트 용산점', 'seoul', 'MARTMONSTER', '2517');
+INSERT INTO store (name, source, is_active) VALUES
+    ('롯데마트',         'LOTTE_MART',     true),
+    ('롯데슈퍼',         'LOTTE_SUPER',    true),
+    ('이마트',           'EMART',          true),
+    ('이마트에브리데이', 'EMART_EVERYDAY', true),
+    ('GS더프레시',       'GS_FRESH',       true),
+    ('코스트코',         'COSTCO',         true)
+ON CONFLICT DO NOTHING;

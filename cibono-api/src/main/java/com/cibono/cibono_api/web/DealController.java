@@ -2,7 +2,10 @@ package com.cibono.cibono_api.web;
 
 import com.cibono.cibono_api.domain.Deal;
 import com.cibono.cibono_api.repository.DealRepository;
-import com.cibono.cibono_api.service.FlyerCrawlerService;
+import com.cibono.cibono_api.service.crawler.EmartCrawlerService;
+import com.cibono.cibono_api.service.crawler.EmartEverydayCrawlerService;
+import com.cibono.cibono_api.service.crawler.GsFreshCrawlerService;
+import com.cibono.cibono_api.service.crawler.LotteCrawlerService;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -13,11 +16,21 @@ import java.util.Map;
 public class DealController {
 	
 	private final DealRepository dealRepository;
-	private final FlyerCrawlerService flyerCrawlerService;
+	private final LotteCrawlerService lotteCrawler;
+	private final EmartCrawlerService emartCrawler;
+	private final EmartEverydayCrawlerService emartEverydayCrawler;
+	private final GsFreshCrawlerService gsFreshCrawler;
 	
-	public DealController(DealRepository dealRepository, FlyerCrawlerService flyerCrawlerService) {
+	public DealController(DealRepository dealRepository,
+			LotteCrawlerService lotteCrawler,
+			EmartCrawlerService emartCrawler,
+			EmartEverydayCrawlerService emartEverydayCrawler,
+			GsFreshCrawlerService gsFreshCrawler) {
 		this.dealRepository = dealRepository;
-		this.flyerCrawlerService = flyerCrawlerService;
+		this.lotteCrawler = lotteCrawler;
+		this.emartCrawler = emartCrawler;
+		this.emartEverydayCrawler = emartEverydayCrawler;
+		this.gsFreshCrawler = gsFreshCrawler;
 	}
 	
 	@GetMapping("/deals")
@@ -42,8 +55,7 @@ public class DealController {
 		
 		List<Deal> deals;
 		if (keyword != null && !keyword.isBlank()) {
-			deals = dealRepository.findByItemNameContainingIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
-					keyword, to, from);
+			deals = dealRepository.findByItemNameContainingIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(keyword, to, from);
 		} else {
 			deals = dealRepository.findByStartsAtLessThanEqualAndEndsAtGreaterThanEqual(to, from);
 		}
@@ -64,9 +76,32 @@ public class DealController {
 	
 	@PostMapping("/admin/deals/crawl")
 	public Map<String, Integer> triggerCrawl() {
-		int count = flyerCrawlerService.crawlAll();
-		
+		int count = 0;
+		count += lotteCrawler.crawl();
+		count += emartCrawler.crawl();
+		count += emartEverydayCrawler.crawl();
+		count += gsFreshCrawler.crawl();
 		return Map.of("saved", count);
+	}
+	
+	@PostMapping("/admin/deals/crawl/lotte")
+	public Map<String, Integer> triggerLotte() {
+		return Map.of("saved", lotteCrawler.crawl());
+	}
+	
+	@PostMapping("/admin/deals/crawl/emart")
+	public Map<String, Integer> triggerEmart() {
+		return Map.of("saved", emartCrawler.crawl());
+	}
+	
+	@PostMapping("/admin/deals/crawl/emart-everyday")
+	public Map<String, Integer> triggerEmartEveryday() {
+		return Map.of("saved", emartEverydayCrawler.crawl());
+	}
+	
+	@PostMapping("/admin/deals/crawl/gs-fresh")
+	public Map<String, Integer> triggerGsFresh() {
+		return Map.of("saved", gsFreshCrawler.crawl());
 	}
 	
 	@PostMapping("/admin/deals")
@@ -108,16 +143,12 @@ public class DealController {
 	}
 	
 	private DealDto toDto(Deal d) {
-		Double discountRate = (d.getOriginalPrice() != null && d.getOriginalPrice() > 0)
-				? Math.round((1.0 - (double) d.getDealPrice() / d.getOriginalPrice()) * 1000.0) / 10.0 : null;
-		
 		return new DealDto(
 				d.getId(),
 				new DealDto.ItemInfo(d.getItemName()),
 				new DealDto.StoreInfo(d.getStoreId()),
 				d.getDealPrice(),
 				d.getOriginalPrice(),
-				discountRate,
 				d.getStartsAt(),
 				d.getEndsAt());
 	}
@@ -126,8 +157,6 @@ public class DealController {
 		LocalDate today = LocalDate.now();
 		boolean isActive = !d.getStartsAt().isAfter(today) && !d.getEndsAt().isBefore(today);
 		Integer saving = (d.getOriginalPrice() != null) ? d.getOriginalPrice() - d.getDealPrice() : null;
-		Double discountRate = (d.getOriginalPrice() != null && d.getOriginalPrice() > 0)
-				? Math.round((1.0 - (double) d.getDealPrice() / d.getOriginalPrice()) * 1000.0) / 10.0 : null;
 		
 		return new DealDetailDto(
 				d.getId(),
@@ -135,7 +164,6 @@ public class DealController {
 				new DealDetailDto.StoreInfo(d.getStoreId()),
 				d.getDealPrice(),
 				d.getOriginalPrice(),
-				discountRate,
 				saving,
 				d.getStartsAt(),
 				d.getEndsAt(),
@@ -143,13 +171,13 @@ public class DealController {
 	}
 	
 	record DealDto(Long id, ItemInfo item, StoreInfo store, Integer dealPrice, Integer originalPrice,
-			Double discountRate, LocalDate startDate, LocalDate endDate) {
+			LocalDate startDate, LocalDate endDate) {
 		record ItemInfo(String name) {}
 		record StoreInfo(Long id) {}
 	}
 	
 	record DealDetailDto(Long id, ItemInfo item, StoreInfo store, Integer dealPrice, Integer originalPrice,
-			Double discountRate, Integer saving, LocalDate startDate, LocalDate endDate, boolean isActive) {
+			Integer saving, LocalDate startDate, LocalDate endDate, boolean isActive) {
 		record ItemInfo(String name) {}
 		record StoreInfo(Long id) {}
 	}

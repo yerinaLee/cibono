@@ -22,9 +22,9 @@ public class StoreController {
 	@GetMapping
 	public Map<String, List<StoreDto>> listStores() {
 		List<Store> stores = storeRepository.findByActiveTrue();
-		return Map.of("data", stores.stream().map(s -> new StoreDto(s.getId(), s.getName(), s.getRegion())).toList());
+		return Map.of("data", stores.stream().map(s -> new StoreDto(s.getId(), s.getName())).toList());
 	}
 	
-	record StoreDto(Long id, String name, String region) {}
+	record StoreDto(Long id, String name) {}
 	
 }
