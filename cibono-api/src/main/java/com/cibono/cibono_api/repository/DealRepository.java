@@ -18,4 +18,6 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
 	
 	boolean existsByStoreIdAndItemNameIgnoreCaseAndStartsAt(Long storeId, String itemName, LocalDate startsAt);
 	
+	void deleteByEndsAtBefore(LocalDate date);
+	
 }

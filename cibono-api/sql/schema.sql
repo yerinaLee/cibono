@@ -29,9 +29,7 @@ CREATE TABLE IF NOT EXISTS food_category (
 CREATE TABLE IF NOT EXISTS store (
     id        BIGSERIAL    PRIMARY KEY,
     name      VARCHAR(100) NOT NULL,
-    region    VARCHAR(100),
     source    VARCHAR(30),
-    store_no  VARCHAR(20),
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
@@ -73,8 +71,11 @@ CREATE TABLE IF NOT EXISTS deal (
     original_price INTEGER,
     starts_at      DATE         NOT NULL,
     ends_at    DATE         NOT NULL,
-    source     VARCHAR(30)  NOT NULL DEFAULT 'MANUAL',  -- MANUAL / CSV / ONLINE
-    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    promotion_type VARCHAR(20),          -- PLUS_N / PERCENT_OFF / SPECIAL_PRICE
+    buy_qty        INTEGER,              -- PLUS_N: N+M에서 N (예: 1+1 → 1). deal_price는 단가로 환산됨.
+    free_qty       INTEGER,              -- PLUS_N: N+M에서 M (예: 1+1 → 1)
+    source         VARCHAR(30)  NOT NULL DEFAULT 'MANUAL',  -- MANUAL / CRAWL
+    created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
 -- 6) 가격 알림 규칙 (내 기준가/조건)

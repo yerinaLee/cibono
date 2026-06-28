@@ -51,6 +51,7 @@ public class AlertService {
 			
 			PriceAlert rule = ruleByItemName.get(deal.getItemName().toLowerCase());
 			Integer saving = (deal.getOriginalPrice() != null) ? deal.getOriginalPrice() - deal.getDealPrice() : null;
+			int effPrice = effectivePrice(deal);
 			
 			AlertEventDto.DealSummary dealSummary =
 					new AlertEventDto.DealSummary(
@@ -58,7 +59,10 @@ public class AlertService {
 							deal.getItemName(),
 							deal.getDealPrice(),
 							deal.getOriginalPrice(),
-							saving, deal.getEndsAt(),
+							saving,
+							effPrice,
+							promotionLabel(deal),   // "1+1", "2+1" 등 표시용
+							deal.getEndsAt(),
 							deal.getStoreId()
 					);
 			
@@ -118,7 +122,7 @@ public class AlertService {
 					rule.getItemName(), today, today);
 			
 			for (Deal d : deals) {
-				if (d.getDealPrice() > rule.getAnchorPrice()) {continue;}
+				if (effectivePrice(d) > rule.getAnchorPrice()) {continue;}
 				if (rule.getStoreId() != null && !rule.getStoreId().equals(d.getStoreId())) {continue;}
 				if (alertEventRepository.findByUserIdAndDealId(rule.getUserId(), d.getId()).isPresent()) {continue;}
 
@@ -132,8 +136,28 @@ public class AlertService {
 		return created;
 	}
 	
+	// dealPrice는 이미 단가로 환산되어 저장됨 (PLUS_N도 묶음가 ÷ 총개수)
+	private static int effectivePrice(Deal d) {
+		return d.getDealPrice();
+	}
+	
+	/** 알림 메시지용 프로모션 라벨. 예: "1+1", "2+1", "30% 할인" */
+	public static String promotionLabel(Deal d) {
+		if (d.getPromotionType() == null) return null;
+		return switch (d.getPromotionType()) {
+			case "PLUS_N" -> {
+				int buy = d.getBuyQty() != null ? d.getBuyQty() : 1;
+				int free = d.getFreeQty() != null ? d.getFreeQty() : 1;
+				yield buy + "+" + free;
+			}
+			case "PERCENT_OFF" -> null; // dealPrice에 이미 반영됨
+			default -> null;
+		};
+	}
+	
 	public record AlertEventDto(Long id, boolean isRead, OffsetDateTime triggeredAt, OffsetDateTime readAt, DealSummary deal, RuleSummary rule) {
-		public record DealSummary(Long id, String itemName, Integer dealPrice, Integer originalPrice, Integer saving, LocalDate endDate, Long storeId) {}
+		// promotionLabel: "1+1", "2+1" 등 — null이면 일반 특가
+		public record DealSummary(Long id, String itemName, Integer dealPrice, Integer originalPrice, Integer saving, Integer effectivePrice, String promotionLabel, LocalDate endDate, Long storeId) {}
 		public record RuleSummary(Long id, Integer thresholdPrice) {}
 	}
 	

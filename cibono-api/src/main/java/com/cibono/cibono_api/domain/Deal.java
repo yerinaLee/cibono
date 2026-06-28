@@ -35,6 +35,17 @@ public class Deal {
 	@Column(name = "original_price")
 	private Integer originalPrice;
 	
+	// PLUS_N | PERCENT_OFF | SPECIAL_PRICE | null
+	@Column(name = "promotion_type", length = 20)
+	private String promotionType;
+	
+	// PLUS_N 일 때: N+M 에서 N (예: 1+1 → buyQty=1, freeQty=1). dealPrice는 이미 단가로 환산됨.
+	@Column(name = "buy_qty")
+	private Integer buyQty;
+	
+	@Column(name = "free_qty")
+	private Integer freeQty;
+	
 	@Column(name = "source", nullable = false, length = 30)
 	private String source = "MANUAL";
 	

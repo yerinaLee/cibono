@@ -38,6 +38,8 @@ compileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'org.jsoup:jsoup:1.18.1'
 	implementation 'com.google.firebase:firebase-admin:9.3.0'
+	implementation 'org.seleniumhq.selenium:selenium-java:4.25.0'
+	implementation 'io.github.bonigarcia:webdrivermanager:5.9.2'
 }
 
 tasks.named('test') {

@@ -17,14 +17,8 @@ public class Store {
 	@Column(name = "name", nullable = false, length = 100)
 	private String name;
 	
-	@Column(name = "region", length = 100)
-	private String region;
-	
 	@Column(name = "source", length = 30)
 	private String source;
-	
-	@Column(name = "store_no", length = 20)
-	private String storeNo;
 	
 	@Column(name = "is_active", nullable = false)
 	private Boolean active = true;

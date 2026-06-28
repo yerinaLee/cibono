@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -83,6 +84,19 @@ public class GeminiService {
 				JsonNode root = mapper.readTree(raw);
 				String text = root.at("/candidates/0/content/parts/0/text").asText("");
 				return text.replaceAll("(?s)```json\\s*", "").replaceAll("(?s)```\\s*", "").trim();
+			} catch (HttpClientErrorException e) {
+				if (e.getStatusCode().value() == 429 && attempt < MAX_RETRY) {
+					// Retry-After 헤더 또는 응답 메시지에서 대기 시간 파싱
+					long waitMs = parseRetryAfterMs(e.getMessage());
+					log.warn("[Gemini] {} 429 Rate Limit — {}ms 후 재시도 ({}/{})", label, waitMs, attempt, MAX_RETRY);
+					try {
+						Thread.sleep(waitMs);
+					} catch (InterruptedException ie) {
+						Thread.currentThread().interrupt();
+					}
+				} else {
+					throw new RuntimeException("Gemini " + label + " 실패 [" + e.getStatusCode() + "]: " + e.getMessage(), e);
+				}
 			} catch (HttpServerErrorException e) {
 				if (e.getStatusCode().value() == 503 && attempt < MAX_RETRY) {
 					long wait = (long) Math.pow(2, attempt) * 1000;
@@ -124,8 +138,14 @@ public class GeminiService {
 				4. originalPrice(정상가)가 없거나 불명확하면 null
 				5. 가격이 전혀 명시되지 않은 상품은 제외
 				6. 식품·식재료가 아닌 상품(생활용품·가전·의류 등)은 제외
-				
-				응답 형식(이 형식만): [{"itemName":"상품명","dealPrice":행사가숫자,"originalPrice":정상가숫자또는null}]
+				7. promotionType 판별 기준:
+				   - "1+1", "2+1" 등 증정 행사 → "PLUS_N", buyQty/freeQty 숫자 추출 (예: 1+1이면 buyQty=1, freeQty=1)
+				   - "X% 할인" 등 퍼센트 할인 → "PERCENT_OFF", buyQty/freeQty는 null
+				   - 가격만 표시된 특가 (할인 방식 불명확) → "SPECIAL_PRICE"
+				   - promotionType 불명확하면 null, 해당 없는 필드는 null
+
+				응답 형식(이 형식만):
+				[{"itemName":"상품명","dealPrice":행사가숫자,"originalPrice":정상가숫자또는null,"promotionType":"PLUS_N|PERCENT_OFF|SPECIAL_PRICE|null","buyQty":숫자또는null,"freeQty":숫자또는null}]
 				""";
 		
 		Map<String, Object> body = Map.of(
@@ -149,8 +169,14 @@ public class GeminiService {
 		}
 	}
 	
-	public record FlyerDealItem(String itemName, Integer dealPrice, Integer originalPrice) {
-	}
+	public record FlyerDealItem(
+			String itemName,
+			Integer dealPrice,
+			Integer originalPrice,
+			String promotionType,   // PLUS_N | PERCENT_OFF | SPECIAL_PRICE | null
+			Integer buyQty,         // PLUS_N: N+M에서 N
+			Integer freeQty         // PLUS_N: N+M에서 M
+	) {}
 	
 	public List<ScannedItem> parseReceiptText(String ocrText) {
 		String prompt = """
@@ -180,6 +206,16 @@ public class GeminiService {
 	}
 	
 	public record ScannedItem(String itemName, BigDecimal quantity, String unit) {
+	}
+	
+	/** "retry in 21s" 형태의 메시지에서 대기 ms 파싱. 파싱 실패 시 30초 기본값 */
+	private static long parseRetryAfterMs(String message) {
+		if (message != null) {
+			java.util.regex.Matcher m = java.util.regex.Pattern.compile("retry[^\\d]*(\\d+)s")
+					.matcher(message.toLowerCase());
+			if (m.find()) return Long.parseLong(m.group(1)) * 1000L;
+		}
+		return 30_000L;
 	}
 	
 }
