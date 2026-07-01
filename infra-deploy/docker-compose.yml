@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cibono-db
+    restart: always
+    environment:
+      POSTGRES_DB: fridge
+      POSTGRES_USER: fridge
+      POSTGRES_PASSWORD: fridge
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ../sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5433:5432"
+
+  ml:
+    build:
+      context: ../ml
+    container_name: cibono-ml
+    restart: always
+    volumes:
+      - paddle-models:/root/.paddleocr
+      - easyocr-models:/root/.EasyOCR
+
+  app:
+    build: .
+    container_name: cibono-api
+    restart: always
+    depends_on:
+      - db
+      - ml
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/fridge
+      SPRING_DATASOURCE_USERNAME: fridge
+      SPRING_DATASOURCE_PASSWORD: fridge
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      YOLO_OCR_URL: http://ml:8000
+    ports:
+      - "8080:8080"
+
+  adminer:
+    image: adminer:latest
+    restart: always
+    ports:
+      - "8888:8080"
+    depends_on:
+      - db
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app
+
+volumes:
+  db-data:
+  paddle-models:
+  easyocr-models:
