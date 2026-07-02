@@ -71,12 +71,14 @@ public abstract class BaseFlyerCrawlerService {
 			return processScreenshot(driver, store, start, end);
 		}
 		
-		// src 기준 중복 제거 — 이마트처럼 전체 페이지 이미지가 DOM에 미리 로드되는 경우 방지
+		// data-src 우선 사용 — 지연 로딩되는 이미지는 화면에 보이기 전까지 src 속성 자체가 없고
+		// data-src에만 실제 URL이 들어있음(이마트 확인됨). src만 있는 경우를 위해 폴백 유지.
+		// distinct는 이마트처럼 전체 페이지 이미지가 DOM에 미리 로드되는 경우 중복 처리 방지용.
 		List<String> uniqueSrcs = imgs.stream()
 				.map(img -> {
-					String src = img.getAttribute("src");
-					if (src == null || src.isBlank()) src = img.getAttribute("data-src");
-					return src;
+					String dataSrc = img.getAttribute("data-src");
+					if (dataSrc != null && !dataSrc.isBlank()) return dataSrc;
+					return img.getAttribute("src");
 				})
 				.filter(src -> src != null && !src.isBlank())
 				.distinct()

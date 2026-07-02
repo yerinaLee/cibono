@@ -16,15 +16,18 @@ import java.util.Optional;
 
 /**
  * 이마트 전단지 크롤러.
- * '종이전단 보기' 클릭 후 모달 오픈.
- * 모달 내 모든 전단 img가 DOM에 한 번에 로드됨 — 페이지네이션 없이 전체 처리.
+ * '종이전단 보기' 클릭 후 모달(MultiPageImageViewer) 오픈.
+ * 모달 내 모든 페이지의 img가 DOM에 한 번에 로드됨 — 페이지네이션 없이 전체 처리.
+ * 단, 화면에 보이지 않는(아래쪽) 페이지는 지연 로딩으로 src 속성이 아예 없고 data-src에만
+ * 실제 이미지 URL이 들어있으므로 반드시 .img_detail 컨테이너 기준 + data-src 우선으로 수집해야 함.
  */
 @Service
 public class EmartCrawlerService extends BaseFlyerCrawlerService {
 	
 	private static final String URL = "https://eapp.emart.com/webapp/product/flyer";
-	// 전단 이미지 URL 패턴: stimg.emart.com/upload/news_leaflet/...
-	private static final String FLYER_IMG_SELECTOR = "img[src*='news_leaflet'], img[src*='leaflet'], img[src*='flyer']";
+	// 전단 이미지는 .img_detail 컨테이너 안에 모두 존재. 지연 로딩된 이미지는 src 없이 data-src만 가짐.
+	private static final String FLYER_IMG_SELECTOR =
+			".img_detail img, img[src*='news_leaflet'], img[data-src*='news_leaflet'], img[src*='leaflet'], img[data-src*='leaflet']";
 	
 	public EmartCrawlerService(GeminiService geminiService, DealRepository dealRepository,
 			StoreRepository storeRepository) {

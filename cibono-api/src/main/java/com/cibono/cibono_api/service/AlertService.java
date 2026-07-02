@@ -3,10 +3,14 @@ package com.cibono.cibono_api.service;
 import com.cibono.cibono_api.domain.AlertEvent;
 import com.cibono.cibono_api.domain.Deal;
 import com.cibono.cibono_api.domain.PriceAlert;
+import com.cibono.cibono_api.domain.PushToken;
 import com.cibono.cibono_api.repository.AlertEventRepository;
 import com.cibono.cibono_api.repository.DealRepository;
 import com.cibono.cibono_api.repository.PriceAlertRepository;
+import com.cibono.cibono_api.repository.PushTokenRepository;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -19,16 +23,24 @@ import java.util.Map;
 @Service
 public class AlertService {
 	
+	private static final Logger log = LoggerFactory.getLogger(AlertService.class);
+	
 	private final PriceAlertRepository priceAlertRepository;
 	private final DealRepository dealRepository;
 	private final AlertEventRepository alertEventRepository;
+	private final PushTokenRepository pushTokenRepository;
+	private final PushNotificationService pushNotificationService;
 	
 	public AlertService(PriceAlertRepository priceAlertRepository,
 			DealRepository dealRepository,
-			AlertEventRepository alertEventRepository) {
+			AlertEventRepository alertEventRepository,
+			PushTokenRepository pushTokenRepository,
+			PushNotificationService pushNotificationService) {
 		this.priceAlertRepository = priceAlertRepository;
 		this.dealRepository = dealRepository;
 		this.alertEventRepository = alertEventRepository;
+		this.pushTokenRepository = pushTokenRepository;
+		this.pushNotificationService = pushNotificationService;
 	}
 	
 	public List<AlertEventDto> listEvents(long userId, Boolean isRead) {
@@ -116,7 +128,7 @@ public class AlertService {
 		LocalDate today = LocalDate.now();
 		List<PriceAlert> rules = priceAlertRepository.findByIsEnabledTrue();
 		int created = 0;
-
+		
 		for (PriceAlert rule : rules) {
 			List<Deal> deals = dealRepository.findByItemNameIgnoreCaseAndStartsAtLessThanEqualAndEndsAtGreaterThanEqual(
 					rule.getItemName(), today, today);
@@ -125,15 +137,34 @@ public class AlertService {
 				if (effectivePrice(d) > rule.getAnchorPrice()) {continue;}
 				if (rule.getStoreId() != null && !rule.getStoreId().equals(d.getStoreId())) {continue;}
 				if (alertEventRepository.findByUserIdAndDealId(rule.getUserId(), d.getId()).isPresent()) {continue;}
-
+				
 				AlertEvent ev = new AlertEvent();
 				ev.setUserId(rule.getUserId());
 				ev.setDealId(d.getId());
 				alertEventRepository.save(ev);
 				created++;
+				
+				sendPriceAlertPush(rule, d);
 			}
 		}
 		return created;
+	}
+	
+	private void sendPriceAlertPush(PriceAlert rule, Deal deal) {
+		List<PushToken> tokens = pushTokenRepository.findAllByUserId(rule.getUserId());
+		if (tokens.isEmpty()) {
+			return;
+		}
+		
+		String title = "📢특가 알림";
+		String body = deal.getItemName() + " " + effectivePrice(deal) + "원";
+		for (PushToken pt : tokens) {
+			try {
+				pushNotificationService.send(pt.getToken(), title, body, Map.of("dealId", deal.getId()));
+			} catch (Exception e) {
+				log.warn("[Alert] 발송 실패 token={}: {}", pt.getToken(), e.getMessage());
+			}
+		}
 	}
 	
 	// dealPrice는 이미 단가로 환산되어 저장됨 (PLUS_N도 묶음가 ÷ 총개수)

@@ -25,6 +25,9 @@ public class GeminiService {
 	@Value("${gemini.api.key}")
 	private String apiKey;
 	
+	@Value("${gemini.api.key.flyer}")
+	private String flyerApiKey;
+	
 	private final RestTemplate rest = new RestTemplate();
 	private final ObjectMapper mapper = new ObjectMapper();
 	
@@ -72,15 +75,15 @@ public class GeminiService {
 				)
 			))
 		);
-		return callGeminiWithRetry(body, "Vision OCR");
+		return callGeminiWithRetry(body, "Vision OCR", apiKey);
 	}
 	
-	private String callGeminiRaw(Map<String, Object> body, String label) {
+	private String callGeminiRaw(Map<String, Object> body, String label, String key) {
 		int attempt = 0;
 		while (true) {
 			try {
 				attempt++;
-				String raw = rest.postForObject(GEMINI_URL + apiKey, body, String.class);
+				String raw = rest.postForObject(GEMINI_URL + key, body, String.class);
 				JsonNode root = mapper.readTree(raw);
 				String text = root.at("/candidates/0/content/parts/0/text").asText("");
 				return text.replaceAll("(?s)```json\\s*", "").replaceAll("(?s)```\\s*", "").trim();
@@ -116,8 +119,8 @@ public class GeminiService {
 		}
 	}
 	
-	private List<ScannedItem> callGeminiWithRetry(Map<String, Object> body, String label) {
-		String text = callGeminiRaw(body, label);
+	private List<ScannedItem> callGeminiWithRetry(Map<String, Object> body, String label, String key) {
+		String text = callGeminiRaw(body, label, key);
 		try {
 			return mapper.readValue(text, new TypeReference<List<ScannedItem>>() {
 			}).stream().map(this::normalizeUnit).toList();
@@ -160,7 +163,7 @@ public class GeminiService {
 			))
 		);
 		
-		String text = callGeminiRaw(body, "전단지 파싱");
+		String text = callGeminiRaw(body, "전단지 파싱", flyerApiKey);
 		try {
 			return mapper.readValue(text, new TypeReference<List<FlyerDealItem>>() {
 			});
@@ -202,7 +205,7 @@ public class GeminiService {
 				"parts", List.of(Map.of("text", prompt))
 			))
 		);
-		return callGeminiWithRetry(body, "텍스트 파싱");
+		return callGeminiWithRetry(body, "텍스트 파싱", apiKey);
 	}
 	
 	public record ScannedItem(String itemName, BigDecimal quantity, String unit) {

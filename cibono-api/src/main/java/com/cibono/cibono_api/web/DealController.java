@@ -84,9 +84,14 @@ public class DealController {
 		return Map.of("saved", count);
 	}
 	
-	@PostMapping("/admin/deals/crawl/lotte")
-	public Map<String, Integer> triggerLotte() {
-		return Map.of("saved", lotteCrawler.crawl());
+	@PostMapping("/admin/deals/crawl/lotte-mart")
+	public Map<String, Integer> triggerLotteMart() {
+		return Map.of("saved", lotteCrawler.crawlLotteMart());
+	}
+	
+	@PostMapping("/admin/deals/crawl/lotte-super")
+	public Map<String, Integer> triggerLotteSuper() {
+		return Map.of("saved", lotteCrawler.crawlLotteSuper());
 	}
 	
 	@PostMapping("/admin/deals/crawl/emart")

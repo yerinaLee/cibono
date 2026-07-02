@@ -12,12 +12,11 @@ import org.springframework.stereotype.Component;
 /**
  * 전단지 크롤링 스케줄러.
  *
- * Gemini 무료 티어 제한(20 req/day)으로 인해 마트별로 2시간 간격 분산.
- *   수요일 08:00 — GS더프레시    (~13장)
- *   목요일 08:00 — 롯데마트      (~8장)
- *   목요일 10:00 — 롯데슈퍼      (~8장)
- *   목요일 12:00 — 이마트        (~8장)
- *   목요일 14:00 — 이마트에브리데이 (~3장)
+ *   수요일 10:00 — GS더프레시
+ *   목요일 08:00 — 롯데마트
+ *   목요일 09:00 — 롯데슈퍼
+ *   목요일 10:00 — 이마트
+ *   목요일 11:00 — 이마트에브리데이
  */
 @Component
 public class FlyerCrawlScheduler {
@@ -39,8 +38,8 @@ public class FlyerCrawlScheduler {
 		this.gsFreshCrawler = gsFreshCrawler;
 	}
 	
-	/** 수요일 08:00 KST — GS더프레시 */
-	@Scheduled(cron = "0 0 8 * * WED", zone = "Asia/Seoul")
+	/** 수요일 10:00 KST — GS더프레시 */
+	@Scheduled(cron = "0 0 10 * * WED", zone = "Asia/Seoul")
 	public void crawlGsFresh() {
 		log.info("[FlyerCrawl] GS더프레시 크롤링 시작");
 		int count = gsFreshCrawler.crawl();
@@ -55,24 +54,24 @@ public class FlyerCrawlScheduler {
 		log.info("[FlyerCrawl] 롯데마트 완료 — {}건", count);
 	}
 	
-	/** 목요일 10:00 KST — 롯데슈퍼 */
-	@Scheduled(cron = "0 0 10 * * THU", zone = "Asia/Seoul")
+	/** 목요일 09:00 KST — 롯데슈퍼 */
+	@Scheduled(cron = "0 0 9 * * THU", zone = "Asia/Seoul")
 	public void crawlLotteSuper() {
 		log.info("[FlyerCrawl] 롯데슈퍼 크롤링 시작");
 		int count = lotteCrawler.crawlLotteSuper();
 		log.info("[FlyerCrawl] 롯데슈퍼 완료 — {}건", count);
 	}
 	
-	/** 목요일 12:00 KST — 이마트 */
-	@Scheduled(cron = "0 0 12 * * THU", zone = "Asia/Seoul")
+	/** 목요일 10:00 KST — 이마트 */
+	@Scheduled(cron = "0 0 10 * * THU", zone = "Asia/Seoul")
 	public void crawlEmart() {
 		log.info("[FlyerCrawl] 이마트 크롤링 시작");
 		int count = emartCrawler.crawl();
 		log.info("[FlyerCrawl] 이마트 완료 — {}건", count);
 	}
 	
-	/** 목요일 14:00 KST — 이마트에브리데이 */
-	@Scheduled(cron = "0 0 14 * * THU", zone = "Asia/Seoul")
+	/** 목요일 11:00 KST — 이마트에브리데이 */
+	@Scheduled(cron = "0 0 11 * * THU", zone = "Asia/Seoul")
 	public void crawlEmartEveryday() {
 		log.info("[FlyerCrawl] 이마트에브리데이 크롤링 시작");
 		int count = emartEverydayCrawler.crawl();
