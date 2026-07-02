@@ -68,7 +68,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const navigatedRef = useRef(false);
+  const handledNotificationIds = useRef(new Set<string>());
 
   // Firebase 익명 로그인
   useEffect(() => {
@@ -86,20 +86,35 @@ export default function RootLayout() {
     });
   }, []);
 
-  // 알림 탭 → 레시피 화면 이동
+  // 알림 탭 → 레시피 화면 / 가격 알림 목록 이동
   useEffect(() => {
     if (!Notifications) return;
 
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      if (navigatedRef.current) return;
-      const recipeName = response.notification.request.content.data?.recipeName;
+    const handleResponse = (response: any) => {
+      const id = response.notification.request.identifier;
+      if (handledNotificationIds.current.has(id)) return;
+      handledNotificationIds.current.add(id);
+
+      const data = response.notification.request.content.data;
+      const recipeName = data?.recipeName;
+      const dealId = data?.dealId;
       if (recipeName) {
-        navigatedRef.current = true;
         setTimeout(() => {
           router.push({ pathname: '/recipe-detail', params: { name: String(recipeName) } });
         }, 300);
+      } else if (dealId) {
+        setTimeout(() => {
+          router.push('/(tabs)/alerts');
+        }, 300);
       }
+    };
+
+    // 앱이 완전히 종료된 상태에서 알림을 탭해 실행된 경우(콜드 스타트) 처리
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleResponse(response);
     });
+
+    const sub = Notifications.addNotificationResponseReceivedListener(handleResponse);
 
     return () => sub.remove();
   }, []);

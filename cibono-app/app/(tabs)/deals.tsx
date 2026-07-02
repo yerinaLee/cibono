@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   Text,
@@ -12,16 +13,19 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
+import { getStoreLogo } from "../../src/constants/storeLogos";
 
 type Deal = {
   id: number;
-  storeId: number | null;
-  itemName: string;
+  item: { name: string };
+  store: { id: number | null };
   dealPrice: number;
-  startsAt: string;
-  endsAt: string;
-  source: string;
+  originalPrice: number | null;
+  startDate: string;
+  endDate: string;
 };
+
+type Store = { id: number; name: string };
 
 const THEME = {
   bg: "#F3F8F1",
@@ -38,6 +42,7 @@ const THEME = {
 
 export default function DealsScreen() {
   const [items, setItems] = useState<Deal[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -52,8 +57,12 @@ export default function DealsScreen() {
     setError("");
     setRefreshing(true);
     try {
-      const res = await api.get<Deal[]>("/deals");
-      setItems(res.data ?? []);
+      const [dealsRes, storesRes] = await Promise.all([
+        api.get<{ data: Deal[] }>("/deals"),
+        api.get<{ data: Store[] }>("/stores"),
+      ]);
+      setItems(dealsRes.data?.data ?? []);
+      setStores(storesRes.data?.data ?? []);
     } catch (e: any) {
       setError(explainNetworkHint(e));
     } finally {
@@ -65,25 +74,33 @@ export default function DealsScreen() {
     load();
   }, [load]);
 
+  const storeNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const s of stores) map.set(s.id, s.name);
+    return map;
+  }, [stores]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let arr = items;
 
     if (q) {
       arr = arr.filter((d) => {
-        const text = `${d.itemName} ${d.source ?? ""}`.toLowerCase();
+        const storeName = d.store.id ? storeNameById.get(d.store.id) : "";
+        const text = `${d.item.name} ${storeName ?? ""}`.toLowerCase();
         return text.includes(q);
       });
     }
 
-    // store/period은 MVP UI 예시로만 (실제 연동 필요 시 서버에서 지원)
+    // period은 MVP UI 예시로만 (실제 연동 필요 시 서버에서 지원)
     if (store !== "전체") {
-      arr = arr.filter((d) =>
-        (d.source ?? "").toLowerCase().includes(store.toLowerCase()),
-      );
+      arr = arr.filter((d) => {
+        const storeName = d.store.id ? storeNameById.get(d.store.id) : "";
+        return storeName === store;
+      });
     }
     return arr;
-  }, [items, period, search, store]);
+  }, [items, period, search, store, storeNameById]);
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -157,7 +174,7 @@ export default function DealsScreen() {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="품목/매장 검색 (UI 예시)"
+              placeholder="품목/매장 검색"
               placeholderTextColor="rgba(31,41,55,0.45)"
               style={styles.searchInput}
               autoFocus
@@ -175,7 +192,7 @@ export default function DealsScreen() {
           <View style={styles.filterPanel}>
             <View style={styles.filterRow}>
               <Text style={styles.filterLabel}>매장</Text>
-              {(["전체", "쿠팡"] as const).map((k) => (
+              {["전체", ...stores.map((s) => s.name)].map((k) => (
                 <Pressable
                   key={k}
                   onPress={() => setStore(k)}
@@ -240,7 +257,6 @@ export default function DealsScreen() {
         <View style={styles.sectionHead}>
           <View>
             <Text style={styles.h3}>오늘 유효한 특가</Text>
-            <Text style={styles.meta}>필터: 검색/매장/기간 (MVP UI)</Text>
           </View>
           <View
             style={[
@@ -269,54 +285,38 @@ export default function DealsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 20 }}
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const storeName = item.store.id
+            ? storeNameById.get(item.store.id)
+            : undefined;
+          const logo = getStoreLogo(storeName);
+          return (
           <View style={styles.itemCard}>
-            <View style={styles.itemIcon}>
-              <Text style={{ fontWeight: "900", color: THEME.brandInk }}>
-                %
-              </Text>
-            </View>
+            {logo ? (
+              <Image source={logo} style={styles.itemLogo} />
+            ) : (
+              <View style={styles.itemIcon}>
+                <Text style={{ fontWeight: "900", color: THEME.brandInk }}>
+                  %
+                </Text>
+              </View>
+            )}
 
             <View style={{ flex: 1 }}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemName} numberOfLines={1}>
-                  {item.itemName}
-                </Text>
-                <View
-                  style={[
-                    styles.badge,
-                    {
-                      backgroundColor: THEME.greenBg,
-                      borderColor: THEME.greenBd,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
-                    특가
-                  </Text>
-                </View>
-              </View>
+              <Text style={styles.itemName} numberOfLines={1}>
+                {item.item.name}
+              </Text>
 
               <Text style={styles.itemSub}>
                 <Text style={styles.mono}>
                   {item.dealPrice.toLocaleString()}원
                 </Text>{" "}
-                · {item.startsAt}~{item.endsAt} · 출처: {item.source}
+                · {item.startDate}~{item.endDate} · {storeName ?? "매장 정보 없음"}
               </Text>
             </View>
-
-            <Pressable
-              onPress={() => router.push("/(tabs)/alerts_rules")}
-              style={({ pressed }) => [
-                styles.iconCircleAdd,
-                pressed && { opacity: 0.85 },
-              ]}
-              accessibilityLabel="규칙에 추가"
-            >
-              <MaterialIcons name="add" size={20} color={THEME.brandInk} />
-            </Pressable>
           </View>
-        )}
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <View style={styles.emptyBubble}>
@@ -478,7 +478,6 @@ const styles: any = {
     shadowOpacity: 0.05,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
   },
   itemIcon: {
     width: 38,
@@ -489,6 +488,12 @@ const styles: any = {
     backgroundColor: THEME.greenBg,
     alignItems: "center",
     justifyContent: "center",
+  },
+  itemLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(107,114,128,0.08)",
   },
   rowBetween: {
     flexDirection: "row",

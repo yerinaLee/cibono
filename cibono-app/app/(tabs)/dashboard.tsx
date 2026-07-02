@@ -13,6 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AddInventoryModal from "../../components/AddInventoryModal";
 import { api, explainNetworkHint } from "../../src/api/client";
+import { getStoreLogo } from "../../src/constants/storeLogos";
 
 type Inventory = {
   id: number;
@@ -23,6 +24,18 @@ type Inventory = {
   expiresAt?: string | null;
   categoryName?: string | null;
 };
+
+type DealDto = {
+  id: number;
+  item: { name: string };
+  store: { id: number | null };
+  dealPrice: number;
+  originalPrice: number | null;
+  startDate: string;
+  endDate: string;
+};
+
+type StoreDto = { id: number; name: string };
 
 type Suggestion = {
   name: string;
@@ -114,6 +127,8 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [reco, setReco] = useState<Suggestion[]>([]);
+  const [deals, setDeals] = useState<DealDto[]>([]);
+  const [stores, setStores] = useState<StoreDto[]>([]);
 
   const [addOpen, setAddOpen] = useState(false);
 
@@ -121,12 +136,16 @@ export default function DashboardScreen() {
     setError("");
     setRefreshing(true);
     try {
-      const [invRes, recoRes] = await Promise.all([
+      const [invRes, recoRes, dealsRes, storesRes] = await Promise.all([
         api.get<Inventory[]>("/inventory"),
         api.get<Suggestion[]>("/recommendations/today"),
+        api.get<{ data: DealDto[] }>("/deals"),
+        api.get<{ data: StoreDto[] }>("/stores"),
       ]);
       setInventory(invRes.data ?? []);
       setReco(recoRes.data ?? []);
+      setDeals(dealsRes.data?.data ?? []);
+      setStores(storesRes.data?.data ?? []);
     } catch (e: any) {
       setError(explainNetworkHint(e));
     } finally {
@@ -166,6 +185,12 @@ export default function DashboardScreen() {
     });
     return result;
   }, [inventory, urgent]);
+
+  const storeNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const s of stores) map.set(s.id, s.name);
+    return map;
+  }, [stores]);
 
   const sortedReco = useMemo(() => {
     const urgentNames = new Set(urgent.map((x) => x.itemName.toLowerCase()));
@@ -413,6 +438,74 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
 
+        {/* 오늘의 특가 */}
+        <View style={[styles.card, { marginTop: 12 }]}>
+          <View style={[styles.rowBetween, { marginBottom: 10 }]}>
+            <Text style={styles.cardTitle}>이주의 특가</Text>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: "rgba(127,183,126,0.16)" },
+              ]}
+            >
+              <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
+                총 {deals.length}건
+              </Text>
+            </View>
+          </View>
+          {deals.length > 0 ? (
+            <View style={{ gap: 10 }}>
+              {deals.slice(0, 5).map((d) => {
+                const storeName = d.store.id
+                  ? storeNameById.get(d.store.id)
+                  : undefined;
+                const logo = getStoreLogo(storeName);
+                return (
+                  <Pressable
+                    key={d.id}
+                    onPress={() => router.push("/(tabs)/deals")}
+                    style={({ pressed }) => [
+                      styles.dealRow,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                  >
+                    {logo ? (
+                      <Image source={logo} style={styles.dealLogo} />
+                    ) : (
+                      <View style={[styles.dealLogo, styles.dealLogoFallback]}>
+                        <Text style={{ fontSize: 16 }}>🏪</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.dealItemName} numberOfLines={1}>
+                        {d.item.name}
+                      </Text>
+                      <Text style={styles.dealStoreName}>
+                        {storeName ?? "매장 정보 없음"}
+                      </Text>
+                    </View>
+                    <Text style={styles.dealPrice}>
+                      {d.dealPrice.toLocaleString()}원
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={styles.desc}>오늘 유효한 특가가 없어요</Text>
+          )}
+          <Pressable
+            onPress={() => router.push("/(tabs)/deals")}
+            style={({ pressed }) => [
+              styles.bottomLink,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={styles.bottomLinkText}>전체 보기</Text>
+            <MaterialIcons name="chevron-right" size={14} color={THEME.brand} />
+          </Pressable>
+        </View>
+
         {/* 추천 요리 */}
         <View style={[styles.card, { marginTop: 12 }]}>
           <View style={[styles.rowBetween, { marginBottom: 10 }]}>
@@ -632,6 +725,26 @@ const styles: any = {
     borderWidth: 1,
   },
   expiryBadgeText: { fontSize: 11, fontWeight: "800" },
+
+  dealRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  dealLogo: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: "rgba(107,114,128,0.08)",
+  },
+  dealLogoFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dealItemName: { fontSize: 14, fontWeight: "800", color: THEME.text },
+  dealStoreName: { marginTop: 2, fontSize: 11, color: THEME.muted },
+  dealPrice: { fontSize: 14, fontWeight: "900", color: THEME.brandInk },
 
   recoGrid: {
     flexDirection: "row",

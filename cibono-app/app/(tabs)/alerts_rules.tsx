@@ -45,14 +45,16 @@ const THEME = {
   redInk: "#5a1a1d",
 };
 
+type RuleDto = {
+  id: number;
+  item: { name: string };
+  thresholdPrice: number;
+  isEnabled: boolean;
+  storeId: number | null;
+};
+
 export default function AlertRulesScreen() {
-  const [rules, setRules] = useState<Rule[]>([
-    // 초기 더미(HTML 시안 느낌 유지) — 실제 연동 시 load에서 덮어씀
-    { id: 1, itemName: "우유 1L", anchorPrice: 2900, active: true },
-    { id: 2, itemName: "계란 30구", anchorPrice: 7900, active: true },
-    { id: 3, itemName: "대파 1단", anchorPrice: 1800, active: true },
-    { id: 4, itemName: "닭가슴살 1kg", anchorPrice: 9900, active: false },
-  ]);
+  const [rules, setRules] = useState<Rule[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
 
   const [search, setSearch] = useState("");
@@ -85,20 +87,29 @@ export default function AlertRulesScreen() {
     [selectedStoreId, stores],
   );
 
-  // NOTE: 서버에 GET 규칙 목록이 없을 수 있어서 일단 try만.
   const load = useCallback(async () => {
     setError("");
     setRefreshing(true);
     try {
-      // 향후 서버에 GET /alerts/rules 같은 API가 생기면 여기에 붙이기.
-      // const res = await api.get<Rule[]>("/alerts/rules");
-      // setRules(res.data.map(r => ({...r, active:true})));
-
-      // 마트 목록은 서버에서 불러옴
-      const storesRes = await api.get<{ data: Store[] }>("/stores");
-      setStores(storesRes.data.data);
+      const [rulesRes, storesRes] = await Promise.all([
+        api.get<{ data: RuleDto[] }>("/alert-rules"),
+        api.get<{ data: Store[] }>("/stores"),
+      ]);
+      const storeList = storesRes.data.data;
+      setStores(storeList);
+      setRules(
+        rulesRes.data.data.map((r) => ({
+          id: r.id,
+          itemName: r.item.name,
+          anchorPrice: r.thresholdPrice,
+          active: r.isEnabled,
+          storeId: r.storeId ?? undefined,
+          storeName: r.storeId
+            ? storeList.find((s) => s.id === r.storeId)?.name
+            : undefined,
+        })),
+      );
     } catch (e: any) {
-      // 지금은 로컬 UI로 동작 가능하니 치명 에러로 보지 않음
       setError(explainNetworkHint(e));
     } finally {
       setRefreshing(false);
@@ -109,14 +120,26 @@ export default function AlertRulesScreen() {
     load();
   }, [load]);
 
-  const toggleActive = useCallback((id: number) => {
-    setRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)),
-    );
+  const toggleActive = useCallback(async (id: number) => {
+    setError("");
+    try {
+      await api.patch(`/alert-rules/${id}/toggle`);
+      setRules((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)),
+      );
+    } catch (e: any) {
+      setError(explainNetworkHint(e));
+    }
   }, []);
 
-  const removeLocal = useCallback((id: number) => {
-    setRules((prev) => prev.filter((r) => r.id !== id));
+  const removeLocal = useCallback(async (id: number) => {
+    setError("");
+    try {
+      await api.delete(`/alert-rules/${id}`);
+      setRules((prev) => prev.filter((r) => r.id !== id));
+    } catch (e: any) {
+      setError(explainNetworkHint(e));
+    }
   }, []);
 
   const addRule = useCallback(async () => {
@@ -135,9 +158,9 @@ export default function AlertRulesScreen() {
 
     try {
       // 실제 서버 호출(이미 존재): 규칙 생성
-      const res = await api.post("/alerts/rules", {
+      const res = await api.post("/alert-rules", {
         itemName: name,
-        anchorPrice: price,
+        thresholdPrice: price,
         storeId: selectedStoreId,
       });
 
@@ -207,7 +230,7 @@ export default function AlertRulesScreen() {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="규칙 검색 (UI 예시)"
+              placeholder="규칙 검색"
               placeholderTextColor="rgba(31,41,55,0.45)"
               style={styles.searchInput}
               autoFocus
@@ -219,23 +242,6 @@ export default function AlertRulesScreen() {
             ) : null}
           </View>
         )}
-
-        <View style={styles.sectionHead}>
-          <View>
-            <Text style={styles.h3}>규칙 리스트</Text>
-            <Text style={styles.meta}>삭제/비활성 토글 UI 포함</Text>
-          </View>
-          <View
-            style={[
-              styles.badge,
-              { backgroundColor: THEME.greenBg, borderColor: THEME.greenBd },
-            ]}
-          >
-            <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
-              활성 {activeCount}
-            </Text>
-          </View>
-        </View>
 
         {error ? (
           <View style={styles.errorBanner}>
@@ -253,11 +259,6 @@ export default function AlertRulesScreen() {
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 110 }}
         renderItem={({ item }) => (
           <View style={[styles.itemCard, !item.active && { opacity: 0.55 }]}>
-            <View style={styles.itemIcon}>
-              <Text style={{ fontWeight: "900", color: THEME.brandInk }}>
-                #
-              </Text>
-            </View>
 
             <View style={{ flex: 1 }}>
               <View style={styles.rowBetween}>
@@ -279,7 +280,7 @@ export default function AlertRulesScreen() {
                 </View>
               </View>
               <Text style={styles.itemSub}>
-                {item.storeName ? `🏪 ${item.storeName}` : "전체 마트"} · 상태: {item.active ? "활성" : "비활성"} (MVP UI)
+                {item.storeName ? `🏪 ${item.storeName}` : "전체 마트"} · 상태: {item.active ? "활성" : "비활성"}
               </Text>
 
               <View style={{ height: 10 }} />
@@ -307,12 +308,15 @@ export default function AlertRulesScreen() {
                   onPress={() => removeLocal(item.id)}
                   style={({ pressed }) => [
                     styles.iconBtn,
+                    {
+                      backgroundColor: "transparent",
+                      borderWidth: 0,
+                      marginLeft: "auto",
+                    },
                     pressed && { opacity: 0.9 },
                   ]}
                 >
-                  <Text style={{ fontWeight: "900", color: THEME.text }}>
-                    🗑
-                  </Text>
+                  <MaterialIcons name="delete-outline" size={20} color="#e11d48" />
                 </Pressable>
               </View>
             </View>
