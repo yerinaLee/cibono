@@ -1,10 +1,10 @@
 fastapi
 uvicorn
-ultralytics
-easyocr
-paddlepaddle
-paddleocr
-opencv-python
-numpy
+six
+ultralytics==8.4.75
+easyocr==1.7.1
+paddleocr==2.7.3
+opencv-python==4.6.0.66
+numpy==1.24.4
 python-multipart
 requests
