@@ -373,7 +373,7 @@ export default function RecommendScreen() {
             {group.error && !group.loading && (
               <View style={[styles.errorBanner, { marginBottom: 4 }]}>
                 <Text style={styles.errorText}>
-                  {group.ingredient} 관련 레시피를 찾지 못했어.
+                  {group.ingredient} 관련 레시피를 찾지 못했어요.
                 </Text>
               </View>
             )}
@@ -779,9 +779,9 @@ export default function RecommendScreen() {
                 <Text style={{ fontSize: 16 }}>👩‍🍳</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.emptyTitle}>추천 결과가 없어</Text>
+                <Text style={styles.emptyTitle}>추천 결과가 없어요</Text>
                 <Text style={styles.emptyText}>
-                  재고를 먼저 등록하거나 필터를 완화해봐.
+                  재고를 먼저 등록하거나 필터를 완화해보세요.
                 </Text>
               </View>
               <Pressable

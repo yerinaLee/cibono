@@ -1,16 +1,22 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import { useEventListener } from "expo";
 import { router } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   Image,
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import AddInventoryModal from "../../components/AddInventoryModal";
 import { api, explainNetworkHint } from "../../src/api/client";
 
@@ -65,13 +71,20 @@ const STORAGE_TEXT: Record<string, string> = {
 
 function categoryIcon(name?: string | null): string {
   switch (name) {
-    case "채소/과일": return "🥬";
-    case "육류/계란": return "🥩";
-    case "해산물": return "🐟";
-    case "우유/유제품": return "🥛";
-    case "밀키트": return "🍱";
-    case "기타": return "📦";
-    default: return "🧺";
+    case "채소/과일":
+      return "🥬";
+    case "육류/계란":
+      return "🥩";
+    case "해산물":
+      return "🐟";
+    case "우유/유제품":
+      return "🥛";
+    case "밀키트":
+      return "🍱";
+    case "기타":
+      return "📦";
+    default:
+      return "🧺";
   }
 }
 
@@ -104,10 +117,29 @@ function expiryColor(days: number | null): string {
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const player = useVideoPlayer(require("../../assets/cibono_logo.mp4"), (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
+  const player = useVideoPlayer(
+    require("../../assets/cibono_logo_black2.mp4"),
+    (p) => {
+      p.loop = false;
+      p.muted = true;
+      p.play();
+    },
+  );
+  const logoPlayCount = useRef(0);
+  const logoFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEventListener(player, "playToEnd", () => {
+    logoPlayCount.current += 1;
+    if (logoPlayCount.current < 2) {
+      player.replay();
+      player.play();
+    } else {
+      Animated.timing(logoFadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }
   });
 
   const [error, setError] = useState("");
@@ -186,28 +218,57 @@ export default function DashboardScreen() {
       edges={["bottom", "left", "right"]}
     >
       <View style={[styles.logoHeader, { paddingTop: insets.top + 6 }]}>
-        <VideoView
-          player={player}
-          style={styles.logoVideo}
-          contentFit="contain"
-          nativeControls={false}
-        />
+        <View style={styles.logoVideo}>
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+            nativeControls={false}
+          />
+          <Animated.Image
+            source={require("../../assets/logo.jpg")}
+            style={[
+              {
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+              },
+              { opacity: logoFadeAnim },
+            ]}
+            resizeMode="contain"
+          />
+        </View>
         <View style={styles.logoHeaderRight}>
           <Pressable
             onPress={() => router.push("/saved-recipes")}
-            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && { opacity: 0.8 },
+            ]}
           >
-            <MaterialIcons name="bookmark-border" size={20} color={THEME.text} />
+            <MaterialIcons
+              name="bookmark-border"
+              size={20}
+              color={THEME.text}
+            />
           </Pressable>
           <Pressable
             onPress={() => router.push("/shopping-list")}
-            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && { opacity: 0.8 },
+            ]}
           >
             <MaterialIcons name="shopping-cart" size={20} color={THEME.text} />
           </Pressable>
           <Pressable
             onPress={() => router.push("/settings")}
-            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && { opacity: 0.8 },
+            ]}
           >
             <MaterialIcons name="settings" size={20} color={THEME.text} />
           </Pressable>
@@ -217,7 +278,11 @@ export default function DashboardScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
-        contentContainerStyle={{ padding: 14, paddingBottom: 80 }}
+        contentContainerStyle={{
+          paddingHorizontal: 14,
+          paddingTop: 2,
+          paddingBottom: 80,
+        }}
       >
         {error ? (
           <View style={styles.banner}>
@@ -241,7 +306,7 @@ export default function DashboardScreen() {
         ) : null}
 
         {/* 임박 재료 */}
-        <View style={[styles.card, { marginTop: 14 }]}>
+        <View style={[styles.card, { marginTop: 4 }]}>
           <View style={styles.rowBetween}>
             <Text style={styles.cardTitle}>임박 재료</Text>
             <View
@@ -313,7 +378,9 @@ export default function DashboardScreen() {
             <View style={{ gap: 14 }}>
               {groupedInventory.map(({ category, items: catItems }) => (
                 <View key={category}>
-                  <Text style={styles.categoryLabel}>{categoryIcon(category)} {category}</Text>
+                  <Text style={styles.categoryLabel}>
+                    {categoryIcon(category)} {category}
+                  </Text>
                   <View style={styles.inventoryList}>
                     {catItems.map((item, idx) => {
                       const days = daysUntil(item.expiresAt);
@@ -490,14 +557,17 @@ const styles: any = {
   logoHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 14,
     paddingBottom: 10,
     backgroundColor: THEME.bg,
     gap: 10,
   },
   logoVideo: {
-    flex: 1,
-    height: 52,
+    width: 160,
+    height: 60,
+    marginLeft: -34,
+    overflow: "hidden",
     backgroundColor: THEME.bg,
   },
   logoHeaderRight: {

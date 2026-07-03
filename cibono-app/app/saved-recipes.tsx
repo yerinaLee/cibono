@@ -129,8 +129,8 @@ export default function SavedRecipesScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <MaterialIcons name="push-pin" size={40} color={THEME.muted} />
-              <Text style={styles.emptyTitle}>저장된 레시피가 없어</Text>
-              <Text style={styles.emptyDesc}>레시피 상세 화면에서 북마크를 눌러 저장해봐.</Text>
+              <Text style={styles.emptyTitle}>저장된 레시피가 없어요</Text>
+              <Text style={styles.emptyDesc}>레시피 상세 화면에서 북마크를 눌러 저장해보세요.</Text>
             </View>
           }
           renderItem={({ item }) => (

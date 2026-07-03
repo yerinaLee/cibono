@@ -125,11 +125,11 @@ export default function AlertRulesScreen() {
     const price = Number(anchorPrice || "0");
 
     if (!name) {
-      setError("품목명을 입력해줘.");
+      setError("품목명을 입력해주세요.");
       return;
     }
     if (!Number.isFinite(price) || price <= 0) {
-      setError("기준가는 0보다 큰 숫자여야 해.");
+      setError("기준가는 0보다 큰 숫자여야 해요.");
       return;
     }
 
@@ -324,9 +324,9 @@ export default function AlertRulesScreen() {
               <Text style={{ fontSize: 16 }}>🏷</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>규칙이 없어</Text>
+              <Text style={styles.emptyTitle}>규칙이 없어요</Text>
               <Text style={styles.emptyText}>
-                자주 사는 품목부터 5개만 등록해도 알림이 유용해져.
+                자주 사는 품목부터 5개만 등록해도 알림이 유용해져요.
               </Text>
             </View>
             <Pressable
@@ -421,7 +421,7 @@ export default function AlertRulesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.tipTitle}>팁</Text>
                   <Text style={styles.tipText}>
-                    규칙 10개만 등록해도 알림 정확도가 확 올라가.
+                    규칙 10개만 등록해도 알림 정확도가 확 올라가요.
                   </Text>
                 </View>
               </View>
