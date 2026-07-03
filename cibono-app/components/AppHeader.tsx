@@ -24,7 +24,7 @@ export default function AppHeader({ title, subtitle, rightExtra }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.topbar, { paddingTop: insets.top + 6 }]}>
+    <View style={[styles.topbar, { paddingTop: insets.top + 16 }]}>
       <View style={{ flex: 1 , paddingLeft: 6}}>
         <Text style={styles.h2}>{title}</Text>
         {!!subtitle && <Text style={styles.sub}>{subtitle}</Text>}

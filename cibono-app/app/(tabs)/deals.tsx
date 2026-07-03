@@ -323,9 +323,9 @@ export default function DealsScreen() {
               <Text style={{ fontSize: 16 }}>🏪</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>조건에 맞는 특가가 없어</Text>
+              <Text style={styles.emptyTitle}>조건에 맞는 특가가 없어요</Text>
               <Text style={styles.emptyText}>
-                기간을 “이번주”로 바꾸거나 기준가를 조정해봐.
+                기간을 “이번주”로 바꾸거나 기준가를 조정해보세요.
               </Text>
             </View>
           </View>

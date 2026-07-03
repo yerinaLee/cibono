@@ -455,12 +455,12 @@ export default function InventoryScreen() {
     setError("");
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setError("품목명을 입력해줘.");
+      setError("품목명을 입력해주세요.");
       return;
     }
     const parsedQty = Number(qty || "1");
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
-      setError("수량은 0보다 큰 숫자여야 해.");
+      setError("수량은 0보다 큰 숫자여야 해요.");
       return;
     }
     try {
@@ -555,7 +555,7 @@ export default function InventoryScreen() {
     setScanError("");
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      setScanError("사진 접근 권한이 필요해.");
+      setScanError("사진 접근 권한이 필요해요.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -584,7 +584,7 @@ export default function InventoryScreen() {
         })),
       );
       if ((res.data ?? []).length === 0)
-        setScanError("식재료를 찾지 못했어. 더 선명한 이미지를 사용해봐.");
+        setScanError("식재료를 찾지 못했어요. 더 선명한 이미지를 사용해보세요.");
     } catch (e: any) {
       const serverMsg =
         e?.response?.data?.message ||
@@ -622,7 +622,7 @@ export default function InventoryScreen() {
     setError("");
     const parsedQty = Number(editQty || "1");
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
-      setError("수량은 0보다 큰 숫자여야 해.");
+      setError("수량은 0보다 큰 숫자여야 해요.");
       return;
     }
     try {
@@ -972,9 +972,9 @@ export default function InventoryScreen() {
               <Text style={{ fontSize: 16 }}>🥬</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>재고가 비어있어</Text>
+              <Text style={styles.emptyTitle}>재고가 비어있어요</Text>
               <Text style={styles.emptyText}>
-                재료를 추가하면 D-day 기준으로 임박 강조/추천이 동작해.
+                재료를 추가하면 D-day 기준으로 임박 강조/추천이 동작해요.
               </Text>
             </View>
             <Pressable
