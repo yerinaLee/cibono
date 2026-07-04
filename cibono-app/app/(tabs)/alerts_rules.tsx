@@ -28,7 +28,11 @@ type Rule = {
   active: boolean; // MVP: 로컬 토글(UI)
   storeId?: number | null;
   storeName?: string;
+  unit?: string | null;
+  quantity?: number | null;
 };
+
+const UNIT_OPTIONS = ["전체", "개", "kg", "g", "ml", "L"] as const;
 
 const THEME = {
   bg: "#F3F8F1",
@@ -51,6 +55,9 @@ type RuleDto = {
   thresholdPrice: number;
   isEnabled: boolean;
   storeId: number | null;
+  unit: string | null;
+  quantity: number | null;
+  createdAt: string;
 };
 
 export default function AlertRulesScreen() {
@@ -64,10 +71,14 @@ export default function AlertRulesScreen() {
 
   // Bottom Sheet (Modal)
   const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [itemName, setItemName] = useState("");
   const [anchorPrice, setAnchorPrice] = useState("");
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [storePickerOpen, setStorePickerOpen] = useState(false);
+  const [unit, setUnit] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -97,8 +108,11 @@ export default function AlertRulesScreen() {
       ]);
       const storeList = storesRes.data.data;
       setStores(storeList);
+      const sorted = [...rulesRes.data.data].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
       setRules(
-        rulesRes.data.data.map((r) => ({
+        sorted.map((r) => ({
           id: r.id,
           itemName: r.item.name,
           anchorPrice: r.thresholdPrice,
@@ -107,6 +121,8 @@ export default function AlertRulesScreen() {
           storeName: r.storeId
             ? storeList.find((s) => s.id === r.storeId)?.name
             : undefined,
+          unit: r.unit,
+          quantity: r.quantity,
         })),
       );
     } catch (e: any) {
@@ -142,46 +158,110 @@ export default function AlertRulesScreen() {
     }
   }, []);
 
-  const addRule = useCallback(async () => {
+  const closeModal = useCallback(() => {
+    setIsOpen(false);
+    setEditingId(null);
+    setItemName("");
+    setAnchorPrice("");
+    setSelectedStoreId(null);
+    setUnit(null);
+    setQuantity("");
+    setConfirmDelete(false);
+  }, []);
+
+  const openAddModal = useCallback(() => {
+    setEditingId(null);
+    setItemName("");
+    setAnchorPrice("");
+    setSelectedStoreId(null);
+    setUnit(null);
+    setQuantity("");
+    setConfirmDelete(false);
+    setIsOpen(true);
+  }, []);
+
+  const openEditModal = useCallback((rule: Rule) => {
+    setEditingId(rule.id);
+    setItemName(rule.itemName);
+    setAnchorPrice(String(rule.anchorPrice));
+    setSelectedStoreId(rule.storeId ?? null);
+    setUnit(rule.unit ?? null);
+    setQuantity(rule.quantity != null ? String(rule.quantity) : "");
+    setConfirmDelete(false);
+    setIsOpen(true);
+  }, []);
+
+  const saveRule = useCallback(async () => {
     setError("");
     const name = itemName.trim();
     const price = Number(anchorPrice || "0");
 
     if (!name) {
-      setError("품목명을 입력해주세요.");
+      setError("품목명을 입력해줘.");
       return;
     }
     if (!Number.isFinite(price) || price <= 0) {
-      setError("기준가는 0보다 큰 숫자여야 해요.");
+      setError("기준가는 0보다 큰 숫자여야 해.");
+      return;
+    }
+    const trimmedQuantity = quantity.trim();
+    const qty = trimmedQuantity ? Number(trimmedQuantity) : null;
+    if (trimmedQuantity && (!Number.isFinite(qty) || (qty as number) <= 0)) {
+      setError("수량은 0보다 큰 숫자여야 해.");
+      return;
+    }
+    const nameTaken = rules.some(
+      (r) => r.id !== editingId && r.itemName.trim().toLowerCase() === name.toLowerCase(),
+    );
+    if (nameTaken) {
+      setError("이미 등록된 품목이야. 규칙은 품목당 1개만 만들 수 있어.");
       return;
     }
 
+    const storeName = selectedStoreId
+      ? stores.find((s) => s.id === selectedStoreId)?.name
+      : undefined;
+
     try {
-      // 실제 서버 호출(이미 존재): 규칙 생성
-      const res = await api.post("/alert-rules", {
-        itemName: name,
-        thresholdPrice: price,
-        storeId: selectedStoreId,
-      });
+      if (editingId != null) {
+        // 규칙 수정
+        await api.put(`/alert-rules/${editingId}`, {
+          itemName: name,
+          thresholdPrice: price,
+          storeId: selectedStoreId,
+          unit,
+          quantity: qty,
+        });
+        setRules((prev) =>
+          prev.map((r) =>
+            r.id === editingId
+              ? { ...r, itemName: name, anchorPrice: price, storeId: selectedStoreId, storeName, unit, quantity: qty }
+              : r,
+          ),
+        );
+      } else {
+        // 규칙 생성
+        const res = await api.post("/alert-rules", {
+          itemName: name,
+          thresholdPrice: price,
+          storeId: selectedStoreId,
+          unit,
+          quantity: qty,
+        });
 
-      // 서버가 반환한 id가 있으면 사용, 없으면 임시 id
-      const newId = res?.data?.id ?? Date.now();
-      const storeName = selectedStoreId
-        ? stores.find((s) => s.id === selectedStoreId)?.name
-        : undefined;
-      setRules((prev) => [
-        { id: newId, itemName: name, anchorPrice: price, active: true, storeId: selectedStoreId, storeName },
-        ...prev,
-      ]);
+        // 서버가 반환한 id가 있으면 사용, 없으면 임시 id
+        const newId = res?.data?.id ?? Date.now();
+        setRules((prev) => [
+          { id: newId, itemName: name, anchorPrice: price, active: true, storeId: selectedStoreId, storeName, unit, quantity: qty },
+          ...prev,
+        ]);
+      }
 
-      setIsOpen(false);
-      setItemName("");
-      setAnchorPrice("");
-      setSelectedStoreId(null);
+      closeModal();
     } catch (e: any) {
       setError(explainNetworkHint(e));
     }
-  }, [anchorPrice, itemName, selectedStoreId, stores]);
+  }, [anchorPrice, closeModal, editingId, itemName, quantity, rules, selectedStoreId, stores, unit]);
 
   return (
     <SafeAreaView
@@ -212,7 +292,7 @@ export default function AlertRulesScreen() {
           </Pressable>
           <View style={{ flex: 1 }} />
           <Pressable
-            onPress={() => setIsOpen(true)}
+            onPress={openAddModal}
             style={({ pressed }) => [
               styles.iconCircleAdd,
               pressed && { opacity: 0.85 },
@@ -258,7 +338,14 @@ export default function AlertRulesScreen() {
         }
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 110 }}
         renderItem={({ item }) => (
-          <View style={[styles.itemCard, !item.active && { opacity: 0.55 }]}>
+          <Pressable
+            onPress={() => openEditModal(item)}
+            style={({ pressed }) => [
+              styles.itemCard,
+              !item.active && { opacity: 0.55 },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
 
             <View style={{ flex: 1 }}>
               <View style={styles.rowBetween}>
@@ -276,11 +363,13 @@ export default function AlertRulesScreen() {
                 >
                   <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
                     ≤ {item.anchorPrice.toLocaleString()}원
+                    {item.unit ? ` / ${item.quantity ?? ""}${item.unit}` : ""}
                   </Text>
                 </View>
               </View>
               <Text style={styles.itemSub}>
-                {item.storeName ? `🏪 ${item.storeName}` : "전체 마트"} · 상태: {item.active ? "활성" : "비활성"}
+                {item.storeName ? `🏪 ${item.storeName}` : "전체 마트"} · 단위:{" "}
+                {item.unit ? `${item.quantity ?? ""}${item.unit}` : "전체"} · 상태: {item.active ? "활성" : "비활성"}
               </Text>
 
               <View style={{ height: 10 }} />
@@ -293,6 +382,7 @@ export default function AlertRulesScreen() {
                   style={({ pressed }) => [
                     styles.toggle,
                     item.active && styles.toggleOn,
+                    { marginLeft: "auto" },
                     pressed && { opacity: 0.9 },
                   ]}
                 >
@@ -303,24 +393,9 @@ export default function AlertRulesScreen() {
                     ]}
                   />
                 </Pressable>
-
-                <Pressable
-                  onPress={() => removeLocal(item.id)}
-                  style={({ pressed }) => [
-                    styles.iconBtn,
-                    {
-                      backgroundColor: "transparent",
-                      borderWidth: 0,
-                      marginLeft: "auto",
-                    },
-                    pressed && { opacity: 0.9 },
-                  ]}
-                >
-                  <MaterialIcons name="delete-outline" size={20} color="#e11d48" />
-                </Pressable>
               </View>
             </View>
-          </View>
+          </Pressable>
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -328,13 +403,13 @@ export default function AlertRulesScreen() {
               <Text style={{ fontSize: 16 }}>🏷</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>규칙이 없어요</Text>
+              <Text style={styles.emptyTitle}>규칙이 없어</Text>
               <Text style={styles.emptyText}>
-                자주 사는 품목부터 5개만 등록해도 알림이 유용해져요.
+                자주 사는 품목부터 5개만 등록해도 알림이 유용해져.
               </Text>
             </View>
             <Pressable
-              onPress={() => setIsOpen(true)}
+              onPress={openAddModal}
               style={({ pressed }) => [
                 styles.btnGhost,
                 pressed && { opacity: 0.9 },
@@ -351,19 +426,21 @@ export default function AlertRulesScreen() {
         transparent
         visible={isOpen}
         animationType="fade"
-        onRequestClose={() => setIsOpen(false)}
+        onRequestClose={closeModal}
       >
         <View style={styles.modalOverlayCenter}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>새 규칙 추가</Text>
+                <Text style={styles.modalTitle}>
+                  {editingId != null ? "규칙 수정" : "새 규칙 추가"}
+                </Text>
                 <Text style={styles.sheetDesc}>
                   품목명 · 기준가 · 조건을 설정해요
                 </Text>
               </View>
               <Pressable
-                onPress={() => setIsOpen(false)}
+                onPress={closeModal}
                 style={({ pressed }) => [
                   styles.iconBtn,
                   pressed && { opacity: 0.9 },
@@ -383,7 +460,7 @@ export default function AlertRulesScreen() {
                 <TextInput
                   value={itemName}
                   onChangeText={setItemName}
-                  placeholder="예: 두부 1모"
+                  placeholder="예: 두부"
                   placeholderTextColor="rgba(31,41,55,0.45)"
                   style={styles.input}
                 />
@@ -403,6 +480,54 @@ export default function AlertRulesScreen() {
                       : "numeric"
                   }
                 />
+              </View>
+
+              {/* 수량 입력 */}
+              <View style={styles.field}>
+                <Text style={styles.label}>수량 (선택 안 하면 수량 무관하게 비교)</Text>
+                <TextInput
+                  value={quantity}
+                  onChangeText={setQuantity}
+                  placeholder="예: 2"
+                  placeholderTextColor="rgba(31,41,55,0.45)"
+                  style={styles.input}
+                  keyboardType={
+                    Platform.OS === "ios"
+                      ? "numbers-and-punctuation"
+                      : "numeric"
+                  }
+                />
+              </View>
+
+              {/* 단위 선택 */}
+              <View style={styles.field}>
+                <Text style={styles.label}>단위 (선택 안 하면 단위 무관하게 비교)</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {UNIT_OPTIONS.map((u) => {
+                    const value = u === "전체" ? null : u;
+                    const selected = unit === value;
+                    return (
+                      <Pressable
+                        key={u}
+                        onPress={() => setUnit(value)}
+                        style={({ pressed }) => [
+                          styles.filterChip,
+                          selected && styles.filterChipActive,
+                          pressed && { opacity: 0.9 },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.filterChipText,
+                            selected && styles.filterChipTextActive,
+                          ]}
+                        >
+                          {u}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
 
               {/* 마트 선택 */}
@@ -425,7 +550,7 @@ export default function AlertRulesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.tipTitle}>팁</Text>
                   <Text style={styles.tipText}>
-                    규칙 10개만 등록해도 알림 정확도가 확 올라가요.
+                    규칙 10개만 등록해도 알림 정확도가 확 올라가.
                   </Text>
                 </View>
               </View>
@@ -433,25 +558,83 @@ export default function AlertRulesScreen() {
             </ScrollView>
 
             <View style={styles.modalFooter}>
-              <Pressable
-                onPress={() => setIsOpen(false)}
-                style={({ pressed }) => [
-                  styles.btnGhost,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text style={styles.btnGhostText}>취소</Text>
-              </Pressable>
-              <View style={{ width: 10 }} />
-              <Pressable
-                onPress={addRule}
-                style={({ pressed }) => [
-                  styles.btnPrimary,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text style={styles.btnPrimaryText}>규칙 추가</Text>
-              </Pressable>
+              {confirmDelete ? (
+                <>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: THEME.redInk,
+                      fontWeight: "800",
+                      flex: 1,
+                    }}
+                  >
+                    정말 삭제할까요?
+                  </Text>
+                  <Pressable
+                    onPress={() => setConfirmDelete(false)}
+                    style={({ pressed }) => [
+                      styles.btnGhost,
+                      pressed && { opacity: 0.9 },
+                    ]}
+                  >
+                    <Text style={styles.btnGhostText}>아니오</Text>
+                  </Pressable>
+                  <View style={{ width: 8 }} />
+                  <Pressable
+                    onPress={async () => {
+                      if (editingId != null) {
+                        await removeLocal(editingId);
+                      }
+                      closeModal();
+                    }}
+                    style={({ pressed }) => [
+                      styles.btnDanger,
+                      pressed && { opacity: 0.9 },
+                    ]}
+                  >
+                    <Text style={styles.btnDangerText}>예, 삭제</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  {editingId != null ? (
+                    <Pressable
+                      onPress={() => setConfirmDelete(true)}
+                      style={({ pressed }) => [
+                        styles.btnDanger,
+                        pressed && { opacity: 0.9 },
+                      ]}
+                    >
+                      <Text style={styles.btnDangerText}>삭제</Text>
+                    </Pressable>
+                  ) : (
+                    <View />
+                  )}
+                  <View style={{ flexDirection: "row" }}>
+                    <Pressable
+                      onPress={closeModal}
+                      style={({ pressed }) => [
+                        styles.btnGhost,
+                        pressed && { opacity: 0.9 },
+                      ]}
+                    >
+                      <Text style={styles.btnGhostText}>취소</Text>
+                    </Pressable>
+                    <View style={{ width: 10 }} />
+                    <Pressable
+                      onPress={saveRule}
+                      style={({ pressed }) => [
+                        styles.btnPrimary,
+                        pressed && { opacity: 0.9 },
+                      ]}
+                    >
+                      <Text style={styles.btnPrimaryText}>
+                        {editingId != null ? "저장" : "규칙 추가"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -551,6 +734,21 @@ const styles: any = {
     borderWidth: 1,
   },
   badgeText: { fontSize: 12, fontWeight: "900" },
+
+  filterChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "rgba(255,255,255,0.9)",
+  },
+  filterChipActive: {
+    borderColor: "rgba(127,183,126,0.4)",
+    backgroundColor: "rgba(127,183,126,0.18)",
+  },
+  filterChipText: { fontSize: 12, fontWeight: "900", color: THEME.muted },
+  filterChipTextActive: { color: THEME.text },
 
   toolbar: {
     flexDirection: "row",
@@ -742,8 +940,18 @@ const styles: any = {
     borderTopWidth: 1,
     borderTopColor: THEME.border,
     flexDirection: "row",
-    justifyContent: "flex-end",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
+  btnDanger: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "rgba(235,87,87,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(235,87,87,0.25)",
+  },
+  btnDangerText: { color: "#e11d48", fontWeight: "900", fontSize: 13 },
   sheet: {
     backgroundColor: THEME.surface,
     borderTopLeftRadius: 18,

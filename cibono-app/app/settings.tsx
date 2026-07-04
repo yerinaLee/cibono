@@ -21,22 +21,24 @@ export default function SettingsScreen() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [lunchEnabled, setLunchEnabled] = useState(true);
   const [dinnerEnabled, setDinnerEnabled] = useState(true);
+  const [dealEnabled, setDealEnabled] = useState(true);
 
   useEffect(() => {
     api.get<{ role: string }>("/me").then((res) => {
       setIsAdmin(res.data.role === "ADMIN");
     }).catch(() => {});
 
-    api.get<{ lunchEnabled: boolean; dinnerEnabled: boolean }>("/notifications/preferences")
+    api.get<{ lunchEnabled: boolean; dinnerEnabled: boolean; dealEnabled: boolean }>("/notifications/preferences")
       .then((res) => {
         setLunchEnabled(res.data.lunchEnabled);
         setDinnerEnabled(res.data.dinnerEnabled);
+        setDealEnabled(res.data.dealEnabled);
       })
       .catch(() => {});
   }, []);
 
-  const updatePreference = (lunch: boolean, dinner: boolean) => {
-    api.put("/notifications/preferences", { lunchEnabled: lunch, dinnerEnabled: dinner }).catch(() => {});
+  const updatePreference = (lunch: boolean, dinner: boolean, deal: boolean) => {
+    api.put("/notifications/preferences", { lunchEnabled: lunch, dinnerEnabled: dinner, dealEnabled: deal }).catch(() => {});
   };
 
   return (
@@ -98,7 +100,7 @@ export default function SettingsScreen() {
               value={lunchEnabled}
               onValueChange={(v) => {
                 setLunchEnabled(v);
-                updatePreference(v, dinnerEnabled);
+                updatePreference(v, dinnerEnabled, dealEnabled);
               }}
               trackColor={{ false: THEME.border, true: THEME.brand }}
               thumbColor="#fff"
@@ -113,7 +115,22 @@ export default function SettingsScreen() {
               value={dinnerEnabled}
               onValueChange={(v) => {
                 setDinnerEnabled(v);
-                updatePreference(lunchEnabled, v);
+                updatePreference(lunchEnabled, v, dealEnabled);
+              }}
+              trackColor={{ false: THEME.border, true: THEME.brand }}
+              thumbColor="#fff"
+            />
+          </View>
+          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: THEME.border }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="local-offer" size={16} color={THEME.brand} />
+              <Text style={styles.rowLabel}>특가 알림</Text>
+            </View>
+            <Switch
+              value={dealEnabled}
+              onValueChange={(v) => {
+                setDealEnabled(v);
+                updatePreference(lunchEnabled, dinnerEnabled, v);
               }}
               trackColor={{ false: THEME.border, true: THEME.brand }}
               thumbColor="#fff"

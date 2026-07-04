@@ -4,6 +4,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
+  Linking,
   Pressable,
   RefreshControl,
   Text,
@@ -21,11 +22,16 @@ type Deal = {
   store: { id: number | null };
   dealPrice: number;
   originalPrice: number | null;
+  quantity: number | null;
+  unit: string | null;
+  promotionType: string | null;
+  buyQty: number | null;
+  freeQty: number | null;
   startDate: string;
   endDate: string;
 };
 
-type Store = { id: number; name: string };
+type Store = { id: number; name: string; flyerUrl: string | null };
 
 const THEME = {
   bg: "#F3F8F1",
@@ -38,6 +44,9 @@ const THEME = {
   greenBg: "rgba(127,183,126,0.18)",
   greenBd: "rgba(127,183,126,0.24)",
   danger: "#EB5757",
+  promoBg: "rgba(235,87,87,0.12)",
+  promoBd: "rgba(235,87,87,0.28)",
+  promoInk: "#C13F3F",
 };
 
 export default function DealsScreen() {
@@ -79,6 +88,22 @@ export default function DealsScreen() {
     for (const s of stores) map.set(s.id, s.name);
     return map;
   }, [stores]);
+
+  const storeById = useMemo(() => {
+    const map = new Map<number, Store>();
+    for (const s of stores) map.set(s.id, s);
+    return map;
+  }, [stores]);
+
+  const handleDealPress = useCallback(
+    (deal: Deal) => {
+      const flyerUrl = deal.store.id ? storeById.get(deal.store.id)?.flyerUrl : null;
+      if (flyerUrl) {
+        Linking.openURL(flyerUrl);
+      }
+    },
+    [storeById]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -291,7 +316,13 @@ export default function DealsScreen() {
             : undefined;
           const logo = getStoreLogo(storeName);
           return (
-          <View style={styles.itemCard}>
+          <Pressable
+            onPress={() => handleDealPress(item)}
+            style={({ pressed }) => [
+              styles.itemCard,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
             {logo ? (
               <Image source={logo} style={styles.itemLogo} />
             ) : (
@@ -303,9 +334,29 @@ export default function DealsScreen() {
             )}
 
             <View style={{ flex: 1 }}>
-              <Text style={styles.itemName} numberOfLines={1}>
-                {item.item.name}
-              </Text>
+              <View style={styles.rowBetween}>
+                <Text style={styles.itemName} numberOfLines={1}>
+                  {item.item.name}
+                </Text>
+                <View style={styles.badgeRow}>
+                  {item.promotionType === "PLUS_N" &&
+                  item.buyQty != null &&
+                  item.freeQty != null ? (
+                    <View style={styles.promoBadge}>
+                      <Text style={styles.promoBadgeText}>
+                        {item.buyQty}+{item.freeQty}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {item.quantity != null && item.unit ? (
+                    <View style={styles.unitBadge}>
+                      <Text style={styles.unitBadgeText}>
+                        {item.quantity}{item.unit}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
 
               <Text style={styles.itemSub}>
                 <Text style={styles.mono}>
@@ -314,7 +365,7 @@ export default function DealsScreen() {
                 · {item.startDate}~{item.endDate} · {storeName ?? "매장 정보 없음"}
               </Text>
             </View>
-          </View>
+          </Pressable>
           );
         }}
         ListEmptyComponent={
@@ -323,9 +374,9 @@ export default function DealsScreen() {
               <Text style={{ fontSize: 16 }}>🏪</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>조건에 맞는 특가가 없어요</Text>
+              <Text style={styles.emptyTitle}>조건에 맞는 특가가 없어</Text>
               <Text style={styles.emptyText}>
-                기간을 “이번주”로 바꾸거나 기준가를 조정해보세요.
+                기간을 “이번주”로 바꾸거나 기준가를 조정해봐.
               </Text>
             </View>
           </View>
@@ -504,6 +555,25 @@ const styles: any = {
   itemName: { fontSize: 15, fontWeight: "900", color: THEME.text, flex: 1 },
   itemSub: { marginTop: 6, fontSize: 12, color: THEME.muted, lineHeight: 16 },
   mono: { fontWeight: "900", color: THEME.text },
+  badgeRow: { flexDirection: "row", gap: 6 },
+  unitBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: THEME.greenBg,
+    borderWidth: 1,
+    borderColor: THEME.greenBd,
+  },
+  unitBadgeText: { fontSize: 11, fontWeight: "900", color: THEME.brandInk },
+  promoBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: THEME.promoBg,
+    borderWidth: 1,
+    borderColor: THEME.promoBd,
+  },
+  promoBadgeText: { fontSize: 11, fontWeight: "900", color: THEME.promoInk },
 
   iconBtn: {
     width: 36,
