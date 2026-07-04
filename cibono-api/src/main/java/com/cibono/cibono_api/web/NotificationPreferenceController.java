@@ -29,8 +29,9 @@ public class NotificationPreferenceController {
 				.orElse(new UserNotificationPreference(userId));
 		pref.setLunchEnabled(req.lunchEnabled());
 		pref.setDinnerEnabled(req.dinnerEnabled());
+		pref.setDealEnabled(req.dealEnabled());
 		return ResponseEntity.ok(prefRepo.save(pref));
 	}
 
-	public record UpdateRequest(boolean lunchEnabled, boolean dinnerEnabled) {}
+	public record UpdateRequest(boolean lunchEnabled, boolean dinnerEnabled, boolean dealEnabled) {}
 }

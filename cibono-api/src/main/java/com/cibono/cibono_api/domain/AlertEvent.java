@@ -22,6 +22,9 @@ public class AlertEvent {
 	@Column(name = "deal_id", nullable = false)
 	private Long dealId;
 	
+	@Column(name = "rule_id")
+	private Long ruleId;
+	
 	@Column(name = "triggered_at", nullable = false)
 	private OffsetDateTime triggeredAt = OffsetDateTime.now();
 	

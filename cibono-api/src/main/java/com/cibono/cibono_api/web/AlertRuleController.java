@@ -36,6 +36,9 @@ public class AlertRuleController {
 		if (req.thresholdPrice() == null || req.thresholdPrice() <= 0) {
 			throw new IllegalArgumentException("thresholdPrice required");
 		}
+		if (priceAlertRepository.existsByUserIdAndItemNameIgnoreCase(UserContext.userId(), req.itemName())) {
+			throw new IllegalArgumentException("already exists: rule for this item name already registered");
+		}
 		
 		PriceAlert rule = new PriceAlert();
 		rule.setUserId(UserContext.userId());
@@ -43,6 +46,8 @@ public class AlertRuleController {
 		rule.setAnchorPrice(req.thresholdPrice());
 		rule.setThresholdType("LTE");
 		rule.setStoreId(req.storeId());
+		rule.setUnit(req.unit());
+		rule.setQuantity(req.quantity());
 		PriceAlert saved = priceAlertRepository.save(rule);
 		
 		return Map.of("id", saved.getId(), "created_at", saved.getCreatedAt());
@@ -52,12 +57,27 @@ public class AlertRuleController {
 	public RuleDto updateRule(@PathVariable Long id, @RequestBody RuleRequest req) {
 		PriceAlert rule = priceAlertRepository.findByIdAndUserId(id, UserContext.userId())
 				.orElseThrow(() -> new IllegalArgumentException("rule not found"));
+		if (req.itemName() != null) {
+			if (req.itemName().isBlank()) {
+				throw new IllegalArgumentException("itemName required");
+			}
+			if (priceAlertRepository.existsByUserIdAndItemNameIgnoreCaseAndIdNot(UserContext.userId(), req.itemName(), id)) {
+				throw new IllegalArgumentException("already exists: rule for this item name already registered");
+			}
+			rule.setItemName(req.itemName());
+		}
 		if (req.thresholdPrice() != null) {
+			if (req.thresholdPrice() <= 0) {
+				throw new IllegalArgumentException("thresholdPrice required");
+			}
 			rule.setAnchorPrice(req.thresholdPrice());
 		}
 		if (req.isEnabled() != null) {
 			rule.setEnabled(req.isEnabled());
 		}
+		rule.setStoreId(req.storeId());
+		rule.setUnit(req.unit());
+		rule.setQuantity(req.quantity());
 		
 		return toDto(priceAlertRepository.save(rule));
 	}
@@ -89,10 +109,12 @@ public class AlertRuleController {
 				"below",
 				r.isEnabled(),
 				r.getStoreId(),
+				r.getUnit(),
+				r.getQuantity(),
 				r.getCreatedAt());
 	}
 	
-	record RuleRequest(String itemName, Integer thresholdPrice, String condition, Boolean isEnabled, Long storeId) {}
+	record RuleRequest(String itemName, Integer thresholdPrice, String condition, Boolean isEnabled, Long storeId, String unit, java.math.BigDecimal quantity) {}
 	
 	record RuleDto(
 			Long id,
@@ -101,6 +123,8 @@ public class AlertRuleController {
 			String condition,
 			boolean isEnabled,
 			Long storeId,
+			String unit,
+			java.math.BigDecimal quantity,
 			OffsetDateTime createdAt) {
 		record ItemInfo(String name) {}
 	}

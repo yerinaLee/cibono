@@ -146,9 +146,13 @@ public class GeminiService {
 				   - "X% 할인" 등 퍼센트 할인 → "PERCENT_OFF", buyQty/freeQty는 null
 				   - 가격만 표시된 특가 (할인 방식 불명확) → "SPECIAL_PRICE"
 				   - promotionType 불명확하면 null, 해당 없는 필드는 null
-
+				8. dealPrice가 적용되는 판매 단위를 quantity(숫자)+unit으로 추출
+				   - 예: "삼겹살 100g 1,980원" → quantity=100, unit="g" / "계란 30구 6,980원" → quantity=30, unit="개"
+				   - unit은 반드시 "개","kg","g","ml","L" 중 하나로 정규화 (판·봉·팩·구 등 낱개 단위는 "개")
+				   - 단위 표기를 찾을 수 없으면 quantity, unit 모두 null
+				
 				응답 형식(이 형식만):
-				[{"itemName":"상품명","dealPrice":행사가숫자,"originalPrice":정상가숫자또는null,"promotionType":"PLUS_N|PERCENT_OFF|SPECIAL_PRICE|null","buyQty":숫자또는null,"freeQty":숫자또는null}]
+				[{"itemName":"상품명","dealPrice":행사가숫자,"originalPrice":정상가숫자또는null,"promotionType":"PLUS_N|PERCENT_OFF|SPECIAL_PRICE|null","buyQty":숫자또는null,"freeQty":숫자또는null,"quantity":숫자또는null,"unit":"개|kg|g|ml|L 또는 null"}]
 				""";
 		
 		Map<String, Object> body = Map.of(
@@ -178,7 +182,70 @@ public class GeminiService {
 			Integer originalPrice,
 			String promotionType,   // PLUS_N | PERCENT_OFF | SPECIAL_PRICE | null
 			Integer buyQty,         // PLUS_N: N+M에서 N
-			Integer freeQty         // PLUS_N: N+M에서 M
+			Integer freeQty,        // PLUS_N: N+M에서 M
+			BigDecimal quantity,    // dealPrice가 적용되는 판매 단위 수량 (예: 100, 30)
+			String unit             // 개 | kg | g | ml | L
+	) {}
+	
+	/**
+	 * 코스트코처럼 행사마다 기간이 달라 전단지 자체에서 기간을 읽어야 하는 경우 사용.
+	 * 상품 목록과 함께 전단지에 표기된 행사 시작일/종료일(ISO 형식)을 함께 추출한다.
+	 */
+	public FlyerParseResult parseFlyerImageWithPeriod(String base64Image, String mimeType) {
+		String prompt = """
+				이 이미지는 마트 행사 전단지입니다.
+				전단지에 있는 모든 행사 상품과, 전단지에 표기된 행사 기간(시작일~종료일)을 함께 추출하세요.
+				
+				[상품 추출 규칙]
+				1. 상품명은 핵심 이름만 남기세요. 예: "농협 유기농 대란 30구 1판" → "계란"
+				2. 가격은 숫자만 (원 기호·쉼표 제거)
+				3. originalPrice(정상가)가 없거나 불명확하면 null
+				4. 가격이 전혀 명시되지 않은 상품은 제외
+				5. 식품·식재료가 아닌 상품(생활용품·가전·의류·화장품 등)은 제외
+				6. promotionType 판별 기준:
+				   - "1+1", "2+1" 등 증정 행사 → "PLUS_N", buyQty/freeQty 숫자 추출 (예: 1+1이면 buyQty=1, freeQty=1)
+				   - "X% 할인" 등 퍼센트 할인 → "PERCENT_OFF", buyQty/freeQty는 null
+				   - 가격만 표시된 특가 (할인 방식 불명확) → "SPECIAL_PRICE"
+				   - promotionType 불명확하면 null, 해당 없는 필드는 null
+				7. dealPrice가 적용되는 판매 단위를 quantity(숫자)+unit으로 추출
+				   - 예: "삼겹살 100g 1,980원" → quantity=100, unit="g" / "계란 30구 6,980원" → quantity=30, unit="개"
+				   - unit은 반드시 "개","kg","g","ml","L" 중 하나로 정규화 (판·봉·팩·구 등 낱개 단위는 "개")
+				   - 단위 표기를 찾을 수 없으면 quantity, unit 모두 null
+				
+				[기간 추출 규칙]
+				1. 전단지에 표기된 행사 시작일과 종료일을 "YYYY-MM-DD" 형식으로 변환
+				2. 연도가 표기되어 있지 않으면 현재 연도로 가정
+				3. 기간을 전혀 찾을 수 없으면 startDate, endDate 모두 null
+				
+				[응답 규칙]
+				마크다운 없이 아래 JSON 객체 하나만 반환 (다른 텍스트 절대 금지):
+				{"startDate":"YYYY-MM-DD 또는 null","endDate":"YYYY-MM-DD 또는 null","items":[{"itemName":"상품명","dealPrice":행사가숫자,"originalPrice":정상가숫자또는null,"promotionType":"PLUS_N|PERCENT_OFF|SPECIAL_PRICE|null","buyQty":숫자또는null,"freeQty":숫자또는null,"quantity":숫자또는null,"unit":"개|kg|g|ml|L 또는 null"}]}
+				""";
+		
+		Map<String, Object> body = Map.of(
+			"contents", List.of(Map.of(
+				"parts", List.of(
+					Map.of("text", prompt),
+					Map.of("inline_data", Map.of(
+						"mime_type", mimeType,
+						"data", base64Image)
+					)
+				)
+			))
+		);
+		
+		String text = callGeminiRaw(body, "전단지+기간 파싱", flyerApiKey);
+		try {
+			return mapper.readValue(text, FlyerParseResult.class);
+		} catch (Exception e) {
+			throw new RuntimeException("전단지+기간 응답 파싱 실패: " + e.getMessage(), e);
+		}
+	}
+	
+	public record FlyerParseResult(
+			String startDate,
+			String endDate,
+			List<FlyerDealItem> items
 	) {}
 	
 	public List<ScannedItem> parseReceiptText(String ocrText) {

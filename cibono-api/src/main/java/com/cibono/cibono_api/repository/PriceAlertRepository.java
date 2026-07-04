@@ -16,4 +16,8 @@ public interface PriceAlertRepository extends JpaRepository<PriceAlert, Long> {
 	
 	Optional<PriceAlert> findByIdAndUserId(Long id, Long userId);
 	
+	boolean existsByUserIdAndItemNameIgnoreCase(Long userId, String itemName);
+	
+	boolean existsByUserIdAndItemNameIgnoreCaseAndIdNot(Long userId, String itemName, Long id);
+	
 }

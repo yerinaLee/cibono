@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
@@ -25,6 +26,13 @@ public class Deal {
 	
 	@Column(name = "deal_price", nullable = false)
 	private Integer dealPrice;
+	
+	// 행사가가 적용되는 판매 단위 (예: 1kg, 30개). 전단지에 표기가 없으면 null.
+	@Column(name = "quantity", precision = 10, scale = 2)
+	private BigDecimal quantity;
+	
+	@Column(name = "unit", length = 20)
+	private String unit;
 	
 	@Column(name = "starts_at", nullable = false)
 	private LocalDate startsAt;

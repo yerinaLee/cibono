@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS store (
     id        BIGSERIAL    PRIMARY KEY,
     name      VARCHAR(100) NOT NULL,
     source    VARCHAR(30),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    flyer_url VARCHAR(500)
 );
 
 -- 3) 구매 기록 (언제, 얼마에 샀는지)
@@ -69,6 +70,8 @@ CREATE TABLE IF NOT EXISTS deal (
     item_name  VARCHAR(200) NOT NULL,
     deal_price     INTEGER      NOT NULL,
     original_price INTEGER,
+    quantity     NUMERIC(10, 2) NOT NULL DEFAULT 1,
+    unit         VARCHAR(20),
     starts_at      DATE         NOT NULL,
     ends_at    DATE         NOT NULL,
     promotion_type VARCHAR(20),          -- PLUS_N / PERCENT_OFF / SPECIAL_PRICE
@@ -88,7 +91,10 @@ CREATE TABLE IF NOT EXISTS price_alert (
     threshold_value NUMERIC(10, 2),
     is_enabled      BOOLEAN        NOT NULL DEFAULT TRUE,
     store_id        BIGINT         REFERENCES store(id),
-    created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+    unit            VARCHAR(20),
+    quantity        NUMERIC(10, 2),
+    created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, item_name)
 );
 
 -- 7) 알림 발생 기록
@@ -96,6 +102,7 @@ CREATE TABLE IF NOT EXISTS alert_event (
     id           BIGSERIAL   PRIMARY KEY,
     user_id      BIGINT      NOT NULL REFERENCES app_user(id),
     deal_id      BIGINT      NOT NULL REFERENCES deal(id),
+    rule_id      BIGINT REFERENCES price_alert(id) ON DELETE SET NULL,
     triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     seen         BOOLEAN     NOT NULL DEFAULT FALSE,
     read_at      TIMESTAMPTZ
@@ -182,9 +189,10 @@ CREATE TABLE IF NOT EXISTS notification_config (
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- 17) 사용자별 알림 수신 설정 (점심/저녁 각각 on/off)
+-- 17) 사용자별 알림 수신 설정 (점심/저녁/특가 각각 on/off)
 CREATE TABLE IF NOT EXISTS user_notification_preference (
     user_id        BIGINT   PRIMARY KEY REFERENCES app_user(id),
     lunch_enabled  BOOLEAN  NOT NULL DEFAULT TRUE,
-    dinner_enabled BOOLEAN  NOT NULL DEFAULT TRUE
+    dinner_enabled BOOLEAN  NOT NULL DEFAULT TRUE,
+    deal_enabled   BOOLEAN  NOT NULL DEFAULT TRUE
 );

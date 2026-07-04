@@ -1,5 +1,6 @@
 package com.cibono.cibono_api.scheduler;
 
+import com.cibono.cibono_api.service.crawler.CostcoCrawlerService;
 import com.cibono.cibono_api.service.crawler.EmartCrawlerService;
 import com.cibono.cibono_api.service.crawler.EmartEverydayCrawlerService;
 import com.cibono.cibono_api.service.crawler.GsFreshCrawlerService;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  *   목요일 09:00 — 롯데슈퍼
  *   목요일 10:00 — 이마트
  *   목요일 11:00 — 이마트에브리데이
+ *   매월 1일/15일 09:00 — 코스트코
  */
 @Component
 public class FlyerCrawlScheduler {
@@ -27,15 +29,18 @@ public class FlyerCrawlScheduler {
 	private final EmartCrawlerService emartCrawler;
 	private final EmartEverydayCrawlerService emartEverydayCrawler;
 	private final GsFreshCrawlerService gsFreshCrawler;
+	private final CostcoCrawlerService costcoCrawler;
 	
 	public FlyerCrawlScheduler(LotteCrawlerService lotteCrawler,
 			EmartCrawlerService emartCrawler,
 			EmartEverydayCrawlerService emartEverydayCrawler,
-			GsFreshCrawlerService gsFreshCrawler) {
+			GsFreshCrawlerService gsFreshCrawler,
+			CostcoCrawlerService costcoCrawler) {
 		this.lotteCrawler = lotteCrawler;
 		this.emartCrawler = emartCrawler;
 		this.emartEverydayCrawler = emartEverydayCrawler;
 		this.gsFreshCrawler = gsFreshCrawler;
+		this.costcoCrawler = costcoCrawler;
 	}
 	
 	/** 수요일 10:00 KST — GS더프레시 */
@@ -76,6 +81,14 @@ public class FlyerCrawlScheduler {
 		log.info("[FlyerCrawl] 이마트에브리데이 크롤링 시작");
 		int count = emartEverydayCrawler.crawl();
 		log.info("[FlyerCrawl] 이마트에브리데이 완료 — {}건", count);
+	}
+	
+	/** 매월 1일, 15일 09:00 KST — 코스트코 */
+	@Scheduled(cron = "0 0 9 1,15 * *", zone = "Asia/Seoul")
+	public void crawlCostco() {
+		log.info("[FlyerCrawl] 코스트코 크롤링 시작");
+		int count = costcoCrawler.crawl();
+		log.info("[FlyerCrawl] 코스트코 완료 — {}건", count);
 	}
 	
 }
