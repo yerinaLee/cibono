@@ -13,8 +13,8 @@ public class PriceAlertScheduler {
 		this.alertService = alertService;
 	}
 	
-	// MVP: 10분마다 한 번 스캔(개발용). 나중에 cron(매일 9시 등)으로 변경.
-	@Scheduled(fixedDelay = 10 * 60 * 1000L)
+	// 매주 수/목요일 정오에 스캔
+	@Scheduled(cron = "0 0 12 * * WED,THU", zone = "${app.notification.timezone}")
 	public void scan() {
 		alertService.runDailyScan();
 	}

@@ -22,6 +22,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
@@ -71,12 +72,14 @@ public abstract class BaseFlyerCrawlerService {
 			return processScreenshot(driver, store, start, end);
 		}
 		
-		// src 기준 중복 제거 — 이마트처럼 전체 페이지 이미지가 DOM에 미리 로드되는 경우 방지
+		// data-src 우선 사용 — 지연 로딩되는 이미지는 화면에 보이기 전까지 src 속성 자체가 없고
+		// data-src에만 실제 URL이 들어있음(이마트 확인됨). src만 있는 경우를 위해 폴백 유지.
+		// distinct는 이마트처럼 전체 페이지 이미지가 DOM에 미리 로드되는 경우 중복 처리 방지용.
 		List<String> uniqueSrcs = imgs.stream()
 				.map(img -> {
-					String src = img.getAttribute("src");
-					if (src == null || src.isBlank()) src = img.getAttribute("data-src");
-					return src;
+					String dataSrc = img.getAttribute("data-src");
+					if (dataSrc != null && !dataSrc.isBlank()) return dataSrc;
+					return img.getAttribute("src");
 				})
 				.filter(src -> src != null && !src.isBlank())
 				.distinct()
@@ -120,6 +123,89 @@ public abstract class BaseFlyerCrawlerService {
 		}
 	}
 	
+	/**
+	 * 코스트코처럼 행사마다 기간이 달라 고정 start/end를 넘길 수 없는 경우 사용.
+	 * 이미지별로 Gemini에 상품과 행사기간을 함께 물어보고, 기간을 읽어낸 이미지만 저장한다.
+	 * @return 총 저장 건수
+	 */
+	@SuppressWarnings("deprecation")
+	protected int processPageImagesWithPeriod(WebDriver driver, String imgSelector, Store store) {
+		List<WebElement> imgs = driver.findElements(By.cssSelector(imgSelector));
+		
+		if (imgs.isEmpty()) {
+			log.debug("[FlyerCrawl] img 요소 없음({}), 스크린샷으로 폴백", imgSelector);
+			return processScreenshotWithPeriod(driver, store);
+		}
+		
+		List<String> uniqueSrcs = imgs.stream()
+				.map(img -> {
+					String dataSrc = img.getAttribute("data-src");
+					if (dataSrc != null && !dataSrc.isBlank()) return dataSrc;
+					return img.getAttribute("src");
+				})
+				.filter(src -> src != null && !src.isBlank())
+				.distinct()
+				.collect(Collectors.toList());
+		
+		if (uniqueSrcs.isEmpty()) {
+			log.debug("[FlyerCrawl] 유효한 src 없음, 스크린샷으로 폴백");
+			return processScreenshotWithPeriod(driver, store);
+		}
+		
+		log.info("[FlyerCrawl] 고유 이미지 {}개 처리 시작(기간 추출 포함)", uniqueSrcs.size());
+		int saved = 0;
+		for (String src : uniqueSrcs) {
+			try {
+				byte[] imageBytes = downloadImage(driver, src);
+				if (imageBytes == null || imageBytes.length == 0) continue;
+				
+				String base64 = Base64.getEncoder().encodeToString(imageBytes);
+				String mimeType = src.toLowerCase().contains(".png") ? "image/png" : "image/jpeg";
+				var result = geminiService.parseFlyerImageWithPeriod(base64, mimeType);
+				LocalDate start = parseIsoDate(result.startDate());
+				LocalDate end = parseIsoDate(result.endDate());
+				if (start == null || end == null) {
+					log.warn("[FlyerCrawl] 이미지({})에서 행사기간을 읽지 못해 건너뜀", src);
+					continue;
+				}
+				log.info("[FlyerCrawl] 이미지({}) → {}개 상품, 기간 {}~{}", src, result.items().size(), start, end);
+				saved += saveDeals(result.items(), store, start, end);
+			} catch (Exception e) {
+				log.warn("[FlyerCrawl] 이미지 처리 실패({}): {}", src, e.getMessage());
+			}
+		}
+		return saved;
+	}
+	
+	/** 이미지 요소를 찾지 못했을 때 스크린샷으로 폴백해 상품+기간을 함께 추출 */
+	protected int processScreenshotWithPeriod(WebDriver driver, Store store) {
+		try {
+			byte[] bytes = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+			String base64 = Base64.getEncoder().encodeToString(bytes);
+			var result = geminiService.parseFlyerImageWithPeriod(base64, "image/png");
+			LocalDate start = parseIsoDate(result.startDate());
+			LocalDate end = parseIsoDate(result.endDate());
+			if (start == null || end == null) {
+				log.warn("[FlyerCrawl] 스크린샷에서 행사기간을 읽지 못해 건너뜀");
+				return 0;
+			}
+			log.info("[FlyerCrawl] 스크린샷 → {}개 상품, 기간 {}~{}", result.items().size(), start, end);
+			return saveDeals(result.items(), store, start, end);
+		} catch (Exception e) {
+			log.warn("[FlyerCrawl] 스크린샷 처리 실패: {}", e.getMessage());
+			return 0;
+		}
+	}
+	
+	private static LocalDate parseIsoDate(String s) {
+		if (s == null || s.isBlank() || "null".equalsIgnoreCase(s.trim())) return null;
+		try {
+			return LocalDate.parse(s.trim());
+		} catch (Exception e) {
+			return null;
+		}
+	}
+	
 	/** Selenium 세션 쿠키를 포함해 이미지 다운로드 */
 	protected byte[] downloadImage(WebDriver driver, String imageUrl) {
 		String cookieStr = driver.manage().getCookies().stream()
@@ -131,8 +217,10 @@ public abstract class BaseFlyerCrawlerService {
 		headers.set("Referer", driver.getCurrentUrl());
 		if (!cookieStr.isBlank()) headers.set("Cookie", cookieStr);
 		
+		// String 오버로드는 URI 템플릿으로 재파싱하면서 이미 퍼센트 인코딩된 문자(한글 파일명 등)를
+		// 다시 인코딩해버려 이중 인코딩 오류(422 Asset was not found)를 낸다. URI로 넘겨 그대로 사용.
 		ResponseEntity<byte[]> resp = rest.exchange(
-				imageUrl, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
+				URI.create(imageUrl), HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
 		return resp.getBody();
 	}
 	
@@ -169,6 +257,8 @@ public abstract class BaseFlyerCrawlerService {
 			deal.setPromotionType(item.promotionType());
 			deal.setBuyQty(item.buyQty());
 			deal.setFreeQty(item.freeQty());
+			deal.setQuantity(item.quantity());
+			deal.setUnit(item.unit());
 			deal.setStartsAt(start);
 			deal.setEndsAt(end);
 			deal.setSource("CRAWL");

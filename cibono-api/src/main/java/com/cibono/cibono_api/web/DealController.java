@@ -2,6 +2,7 @@ package com.cibono.cibono_api.web;
 
 import com.cibono.cibono_api.domain.Deal;
 import com.cibono.cibono_api.repository.DealRepository;
+import com.cibono.cibono_api.service.crawler.CostcoCrawlerService;
 import com.cibono.cibono_api.service.crawler.EmartCrawlerService;
 import com.cibono.cibono_api.service.crawler.EmartEverydayCrawlerService;
 import com.cibono.cibono_api.service.crawler.GsFreshCrawlerService;
@@ -20,17 +21,20 @@ public class DealController {
 	private final EmartCrawlerService emartCrawler;
 	private final EmartEverydayCrawlerService emartEverydayCrawler;
 	private final GsFreshCrawlerService gsFreshCrawler;
+	private final CostcoCrawlerService costcoCrawler;
 	
 	public DealController(DealRepository dealRepository,
 			LotteCrawlerService lotteCrawler,
 			EmartCrawlerService emartCrawler,
 			EmartEverydayCrawlerService emartEverydayCrawler,
-			GsFreshCrawlerService gsFreshCrawler) {
+			GsFreshCrawlerService gsFreshCrawler,
+			CostcoCrawlerService costcoCrawler) {
 		this.dealRepository = dealRepository;
 		this.lotteCrawler = lotteCrawler;
 		this.emartCrawler = emartCrawler;
 		this.emartEverydayCrawler = emartEverydayCrawler;
 		this.gsFreshCrawler = gsFreshCrawler;
+		this.costcoCrawler = costcoCrawler;
 	}
 	
 	@GetMapping("/deals")
@@ -81,12 +85,18 @@ public class DealController {
 		count += emartCrawler.crawl();
 		count += emartEverydayCrawler.crawl();
 		count += gsFreshCrawler.crawl();
+		count += costcoCrawler.crawl();
 		return Map.of("saved", count);
 	}
 	
-	@PostMapping("/admin/deals/crawl/lotte")
-	public Map<String, Integer> triggerLotte() {
-		return Map.of("saved", lotteCrawler.crawl());
+	@PostMapping("/admin/deals/crawl/lotte-mart")
+	public Map<String, Integer> triggerLotteMart() {
+		return Map.of("saved", lotteCrawler.crawlLotteMart());
+	}
+	
+	@PostMapping("/admin/deals/crawl/lotte-super")
+	public Map<String, Integer> triggerLotteSuper() {
+		return Map.of("saved", lotteCrawler.crawlLotteSuper());
 	}
 	
 	@PostMapping("/admin/deals/crawl/emart")
@@ -102,6 +112,11 @@ public class DealController {
 	@PostMapping("/admin/deals/crawl/gs-fresh")
 	public Map<String, Integer> triggerGsFresh() {
 		return Map.of("saved", gsFreshCrawler.crawl());
+	}
+	
+	@PostMapping("/admin/deals/crawl/costco")
+	public Map<String, Integer> triggerCostco() {
+		return Map.of("saved", costcoCrawler.crawl());
 	}
 	
 	@PostMapping("/admin/deals")
@@ -126,6 +141,8 @@ public class DealController {
 		if (req.getItemName() != null) {deal.setItemName(req.getItemName());}
 		if (req.getDealPrice() != null) {deal.setDealPrice(req.getDealPrice());}
 		if (req.getOriginalPrice() != null) {deal.setOriginalPrice(req.getOriginalPrice());}
+		if (req.getQuantity() != null) {deal.setQuantity(req.getQuantity());}
+		if (req.getUnit() != null) {deal.setUnit(req.getUnit());}
 		if (req.getStartsAt() != null) {deal.setStartsAt(req.getStartsAt());}
 		if (req.getEndsAt() != null) {deal.setEndsAt(req.getEndsAt());}
 		if (req.getSource() != null) {deal.setSource(req.getSource());}
@@ -149,6 +166,11 @@ public class DealController {
 				new DealDto.StoreInfo(d.getStoreId()),
 				d.getDealPrice(),
 				d.getOriginalPrice(),
+				d.getQuantity(),
+				d.getUnit(),
+				d.getPromotionType(),
+				d.getBuyQty(),
+				d.getFreeQty(),
 				d.getStartsAt(),
 				d.getEndsAt());
 	}
@@ -164,6 +186,8 @@ public class DealController {
 				new DealDetailDto.StoreInfo(d.getStoreId()),
 				d.getDealPrice(),
 				d.getOriginalPrice(),
+				d.getQuantity(),
+				d.getUnit(),
 				saving,
 				d.getStartsAt(),
 				d.getEndsAt(),
@@ -171,13 +195,14 @@ public class DealController {
 	}
 	
 	record DealDto(Long id, ItemInfo item, StoreInfo store, Integer dealPrice, Integer originalPrice,
+			java.math.BigDecimal quantity, String unit, String promotionType, Integer buyQty, Integer freeQty,
 			LocalDate startDate, LocalDate endDate) {
 		record ItemInfo(String name) {}
 		record StoreInfo(Long id) {}
 	}
 	
 	record DealDetailDto(Long id, ItemInfo item, StoreInfo store, Integer dealPrice, Integer originalPrice,
-			Integer saving, LocalDate startDate, LocalDate endDate, boolean isActive) {
+			java.math.BigDecimal quantity, String unit, Integer saving, LocalDate startDate, LocalDate endDate, boolean isActive) {
 		record ItemInfo(String name) {}
 		record StoreInfo(Long id) {}
 	}

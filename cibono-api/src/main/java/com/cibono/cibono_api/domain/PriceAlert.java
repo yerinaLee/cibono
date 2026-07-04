@@ -38,6 +38,14 @@ public class PriceAlert {
 	@Column(name = "store_id")
 	private Long storeId;
 	
+	// 특정 단위(예: kg)일 때만 매칭. null이면 단위 무관하게 매칭(기존 동작 유지).
+	@Column(name = "unit", length = 20)
+	private String unit;
+	
+	// 특정 수량(예: 2kg)일 때만 매칭. null이면 수량 무관하게 매칭.
+	@Column(name = "quantity", precision = 10, scale = 2)
+	private BigDecimal quantity;
+	
 	@Column(name = "created_at", nullable = false)
 	private OffsetDateTime createdAt = OffsetDateTime.now();
 	

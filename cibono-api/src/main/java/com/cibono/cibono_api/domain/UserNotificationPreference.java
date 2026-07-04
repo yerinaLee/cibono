@@ -11,18 +11,22 @@ import lombok.Setter;
 @Entity
 @Table(name = "user_notification_preference")
 public class UserNotificationPreference {
-
+	
 	@Id
 	@Column(name = "user_id")
 	private Long userId;
-
+	
 	@Column(name = "lunch_enabled", nullable = false)
 	private boolean lunchEnabled = true;
-
+	
 	@Column(name = "dinner_enabled", nullable = false)
 	private boolean dinnerEnabled = true;
-
+	
+	@Column(name = "deal_enabled", nullable = false)
+	private boolean dealEnabled = true;
+	
 	public UserNotificationPreference(Long userId) {
 		this.userId = userId;
 	}
+	
 }

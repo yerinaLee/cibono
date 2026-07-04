@@ -3,6 +3,8 @@ import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
+  Linking,
   Pressable,
   RefreshControl,
   Text,
@@ -12,16 +14,24 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
+import { getStoreLogo } from "../../src/constants/storeLogos";
 
 type Deal = {
   id: number;
-  storeId: number | null;
-  itemName: string;
+  item: { name: string };
+  store: { id: number | null };
   dealPrice: number;
-  startsAt: string;
-  endsAt: string;
-  source: string;
+  originalPrice: number | null;
+  quantity: number | null;
+  unit: string | null;
+  promotionType: string | null;
+  buyQty: number | null;
+  freeQty: number | null;
+  startDate: string;
+  endDate: string;
 };
+
+type Store = { id: number; name: string; flyerUrl: string | null };
 
 const THEME = {
   bg: "#F3F8F1",
@@ -34,10 +44,14 @@ const THEME = {
   greenBg: "rgba(127,183,126,0.18)",
   greenBd: "rgba(127,183,126,0.24)",
   danger: "#EB5757",
+  promoBg: "rgba(235,87,87,0.12)",
+  promoBd: "rgba(235,87,87,0.28)",
+  promoInk: "#C13F3F",
 };
 
 export default function DealsScreen() {
   const [items, setItems] = useState<Deal[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -52,8 +66,12 @@ export default function DealsScreen() {
     setError("");
     setRefreshing(true);
     try {
-      const res = await api.get<Deal[]>("/deals");
-      setItems(res.data ?? []);
+      const [dealsRes, storesRes] = await Promise.all([
+        api.get<{ data: Deal[] }>("/deals"),
+        api.get<{ data: Store[] }>("/stores"),
+      ]);
+      setItems(dealsRes.data?.data ?? []);
+      setStores(storesRes.data?.data ?? []);
     } catch (e: any) {
       setError(explainNetworkHint(e));
     } finally {
@@ -65,25 +83,49 @@ export default function DealsScreen() {
     load();
   }, [load]);
 
+  const storeNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const s of stores) map.set(s.id, s.name);
+    return map;
+  }, [stores]);
+
+  const storeById = useMemo(() => {
+    const map = new Map<number, Store>();
+    for (const s of stores) map.set(s.id, s);
+    return map;
+  }, [stores]);
+
+  const handleDealPress = useCallback(
+    (deal: Deal) => {
+      const flyerUrl = deal.store.id ? storeById.get(deal.store.id)?.flyerUrl : null;
+      if (flyerUrl) {
+        Linking.openURL(flyerUrl);
+      }
+    },
+    [storeById]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let arr = items;
 
     if (q) {
       arr = arr.filter((d) => {
-        const text = `${d.itemName} ${d.source ?? ""}`.toLowerCase();
+        const storeName = d.store.id ? storeNameById.get(d.store.id) : "";
+        const text = `${d.item.name} ${storeName ?? ""}`.toLowerCase();
         return text.includes(q);
       });
     }
 
-    // store/period은 MVP UI 예시로만 (실제 연동 필요 시 서버에서 지원)
+    // period은 MVP UI 예시로만 (실제 연동 필요 시 서버에서 지원)
     if (store !== "전체") {
-      arr = arr.filter((d) =>
-        (d.source ?? "").toLowerCase().includes(store.toLowerCase()),
-      );
+      arr = arr.filter((d) => {
+        const storeName = d.store.id ? storeNameById.get(d.store.id) : "";
+        return storeName === store;
+      });
     }
     return arr;
-  }, [items, period, search, store]);
+  }, [items, period, search, store, storeNameById]);
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -157,7 +199,7 @@ export default function DealsScreen() {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="품목/매장 검색 (UI 예시)"
+              placeholder="품목/매장 검색"
               placeholderTextColor="rgba(31,41,55,0.45)"
               style={styles.searchInput}
               autoFocus
@@ -175,7 +217,7 @@ export default function DealsScreen() {
           <View style={styles.filterPanel}>
             <View style={styles.filterRow}>
               <Text style={styles.filterLabel}>매장</Text>
-              {(["전체", "쿠팡"] as const).map((k) => (
+              {["전체", ...stores.map((s) => s.name)].map((k) => (
                 <Pressable
                   key={k}
                   onPress={() => setStore(k)}
@@ -240,7 +282,6 @@ export default function DealsScreen() {
         <View style={styles.sectionHead}>
           <View>
             <Text style={styles.h3}>오늘 유효한 특가</Text>
-            <Text style={styles.meta}>필터: 검색/매장/기간 (MVP UI)</Text>
           </View>
           <View
             style={[
@@ -269,31 +310,51 @@ export default function DealsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 20 }}
-        renderItem={({ item }) => (
-          <View style={styles.itemCard}>
-            <View style={styles.itemIcon}>
-              <Text style={{ fontWeight: "900", color: THEME.brandInk }}>
-                %
-              </Text>
-            </View>
+        renderItem={({ item }) => {
+          const storeName = item.store.id
+            ? storeNameById.get(item.store.id)
+            : undefined;
+          const logo = getStoreLogo(storeName);
+          return (
+          <Pressable
+            onPress={() => handleDealPress(item)}
+            style={({ pressed }) => [
+              styles.itemCard,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            {logo ? (
+              <Image source={logo} style={styles.itemLogo} />
+            ) : (
+              <View style={styles.itemIcon}>
+                <Text style={{ fontWeight: "900", color: THEME.brandInk }}>
+                  %
+                </Text>
+              </View>
+            )}
 
             <View style={{ flex: 1 }}>
               <View style={styles.rowBetween}>
                 <Text style={styles.itemName} numberOfLines={1}>
-                  {item.itemName}
+                  {item.item.name}
                 </Text>
-                <View
-                  style={[
-                    styles.badge,
-                    {
-                      backgroundColor: THEME.greenBg,
-                      borderColor: THEME.greenBd,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.badgeText, { color: THEME.brandInk }]}>
-                    특가
-                  </Text>
+                <View style={styles.badgeRow}>
+                  {item.promotionType === "PLUS_N" &&
+                  item.buyQty != null &&
+                  item.freeQty != null ? (
+                    <View style={styles.promoBadge}>
+                      <Text style={styles.promoBadgeText}>
+                        {item.buyQty}+{item.freeQty}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {item.quantity != null && item.unit ? (
+                    <View style={styles.unitBadge}>
+                      <Text style={styles.unitBadgeText}>
+                        {item.quantity}{item.unit}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
 
@@ -301,31 +362,21 @@ export default function DealsScreen() {
                 <Text style={styles.mono}>
                   {item.dealPrice.toLocaleString()}원
                 </Text>{" "}
-                · {item.startsAt}~{item.endsAt} · 출처: {item.source}
+                · {item.startDate}~{item.endDate} · {storeName ?? "매장 정보 없음"}
               </Text>
             </View>
-
-            <Pressable
-              onPress={() => router.push("/(tabs)/alerts_rules")}
-              style={({ pressed }) => [
-                styles.iconCircleAdd,
-                pressed && { opacity: 0.85 },
-              ]}
-              accessibilityLabel="규칙에 추가"
-            >
-              <MaterialIcons name="add" size={20} color={THEME.brandInk} />
-            </Pressable>
-          </View>
-        )}
+          </Pressable>
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <View style={styles.emptyBubble}>
               <Text style={{ fontSize: 16 }}>🏪</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>조건에 맞는 특가가 없어요</Text>
+              <Text style={styles.emptyTitle}>조건에 맞는 특가가 없어</Text>
               <Text style={styles.emptyText}>
-                기간을 “이번주”로 바꾸거나 기준가를 조정해보세요.
+                기간을 “이번주”로 바꾸거나 기준가를 조정해봐.
               </Text>
             </View>
           </View>
@@ -478,7 +529,6 @@ const styles: any = {
     shadowOpacity: 0.05,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
   },
   itemIcon: {
     width: 38,
@@ -490,6 +540,12 @@ const styles: any = {
     alignItems: "center",
     justifyContent: "center",
   },
+  itemLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(107,114,128,0.08)",
+  },
   rowBetween: {
     flexDirection: "row",
     alignItems: "center",
@@ -499,6 +555,25 @@ const styles: any = {
   itemName: { fontSize: 15, fontWeight: "900", color: THEME.text, flex: 1 },
   itemSub: { marginTop: 6, fontSize: 12, color: THEME.muted, lineHeight: 16 },
   mono: { fontWeight: "900", color: THEME.text },
+  badgeRow: { flexDirection: "row", gap: 6 },
+  unitBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: THEME.greenBg,
+    borderWidth: 1,
+    borderColor: THEME.greenBd,
+  },
+  unitBadgeText: { fontSize: 11, fontWeight: "900", color: THEME.brandInk },
+  promoBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: THEME.promoBg,
+    borderWidth: 1,
+    borderColor: THEME.promoBd,
+  },
+  promoBadgeText: { fontSize: 11, fontWeight: "900", color: THEME.promoInk },
 
   iconBtn: {
     width: 36,

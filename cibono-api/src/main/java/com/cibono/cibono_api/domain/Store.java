@@ -23,4 +23,7 @@ public class Store {
 	@Column(name = "is_active", nullable = false)
 	private Boolean active = true;
 	
+	@Column(name = "flyer_url", length = 500)
+	private String flyerUrl;
+	
 }

@@ -1,8 +1,10 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   Text,
@@ -12,21 +14,25 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
+import { getStoreLogo } from "../../src/constants/storeLogos";
 
 type AlertEvent = {
   id: number;
-  userId: number;
-  dealId: number;
-  seen: boolean;
-};
-
-type Deal = {
-  id: number;
-  itemName: string;
-  dealPrice: number;
-  startsAt: string;
-  endsAt: string;
-  source: string;
+  isRead: boolean;
+  triggeredAt: string;
+  readAt: string | null;
+  deal: {
+    id: number;
+    itemName: string;
+    dealPrice: number;
+    originalPrice: number | null;
+    saving: number | null;
+    effectivePrice: number;
+    promotionLabel: string | null;
+    endDate: string;
+    storeId: number | null;
+  } | null;
+  rule: { id: number; thresholdPrice: number } | null;
 };
 
 const THEME = {
@@ -44,9 +50,11 @@ const THEME = {
   greenBd: "rgba(127,183,126,0.24)",
 };
 
+type Store = { id: number; name: string };
+
 export default function AlertsScreen() {
   const [items, setItems] = useState<AlertEvent[]>([]);
-  const [dealMap, setDealMap] = useState<Record<number, Deal>>({});
+  const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -58,20 +66,24 @@ export default function AlertsScreen() {
     setError("");
     setRefreshing(true);
     try {
-      const [alertsRes, dealsRes] = await Promise.all([
+      const [alertsRes, storesRes] = await Promise.all([
         api.get<{ data: AlertEvent[] }>("/alerts"),
-        api.get<Deal[]>("/deals"),
+        api.get<{ data: Store[] }>("/stores"),
       ]);
       setItems(alertsRes.data?.data ?? []);
-      const map: Record<number, Deal> = {};
-      for (const d of dealsRes.data ?? []) map[d.id] = d;
-      setDealMap(map);
+      setStores(storesRes.data?.data ?? []);
     } catch (e: any) {
       setError(explainNetworkHint(e));
     } finally {
       setRefreshing(false);
     }
   }, []);
+
+  const storeNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const s of stores) map.set(s.id, s.name);
+    return map;
+  }, [stores]);
 
   const runScan = useCallback(async () => {
     setError("");
@@ -96,12 +108,14 @@ export default function AlertsScreen() {
     [load],
   );
 
-  React.useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const unreadCount = useMemo(
-    () => items.filter((x) => !x.seen).length,
+    () => items.filter((x) => !x.isRead).length,
     [items],
   );
 
@@ -110,17 +124,21 @@ export default function AlertsScreen() {
     let arr = items;
 
     arr =
-      tab === "unread" ? arr.filter((x) => !x.seen) : arr.filter((x) => x.seen);
+      tab === "unread"
+        ? arr.filter((x) => !x.isRead)
+        : arr.filter((x) => x.isRead);
 
     if (!q) return arr;
 
     return arr.filter((ev) => {
-      const d = dealMap[ev.dealId];
+      const storeName = ev.deal?.storeId
+        ? storeNameById.get(ev.deal.storeId)
+        : "";
       const text =
-        `${d?.itemName ?? ""} ${d?.source ?? ""} dealId:${ev.dealId}`.toLowerCase();
+        `${ev.deal?.itemName ?? ""} ${storeName ?? ""}`.toLowerCase();
       return text.includes(q);
     });
-  }, [dealMap, items, search, tab]);
+  }, [items, search, storeNameById, tab]);
 
   return (
     <SafeAreaView
@@ -215,7 +233,7 @@ export default function AlertsScreen() {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="알림 검색 (UI 예시)"
+              placeholder="알림 검색"
               placeholderTextColor="rgba(31,41,55,0.45)"
               style={styles.searchInput}
               autoFocus
@@ -228,23 +246,6 @@ export default function AlertsScreen() {
           </View>
         )}
 
-        {/* Section Head */}
-        <View style={styles.sectionHead}>
-          <View>
-            <Text style={styles.h3}>알림 이벤트</Text>
-            <Text style={styles.meta}>미확인은 강조 / 확인 처리 버튼</Text>
-          </View>
-          <View
-            style={[
-              styles.pill,
-              { backgroundColor: THEME.redBg, borderColor: THEME.redBd },
-            ]}
-          >
-            <Text style={[styles.pillText, { color: THEME.redInk }]}>
-              미확인 {unreadCount}
-            </Text>
-          </View>
-        </View>
 
         {/* Error banner */}
         {error ? (
@@ -262,8 +263,12 @@ export default function AlertsScreen() {
         }
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 20 }}
         renderItem={({ item }) => {
-          const deal = dealMap[item.dealId];
-          const isUnread = !item.seen;
+          const deal = item.deal;
+          const isUnread = !item.isRead;
+          const storeName = deal?.storeId
+            ? storeNameById.get(deal.storeId)
+            : undefined;
+          const logo = getStoreLogo(storeName);
 
           return (
             <View
@@ -275,24 +280,28 @@ export default function AlertsScreen() {
                 },
               ]}
             >
-              <View
-                style={[
-                  styles.itemIcon,
-                  isUnread && {
-                    backgroundColor: THEME.redBg,
-                    borderColor: "rgba(232,107,107,0.20)",
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    fontWeight: "900",
-                    color: isUnread ? THEME.redInk : THEME.brandInk,
-                  }}
+              {logo ? (
+                <Image source={logo} style={styles.itemLogo} />
+              ) : (
+                <View
+                  style={[
+                    styles.itemIcon,
+                    isUnread && {
+                      backgroundColor: THEME.redBg,
+                      borderColor: "rgba(232,107,107,0.20)",
+                    },
+                  ]}
                 >
-                  !
-                </Text>
-              </View>
+                  <Text
+                    style={{
+                      fontWeight: "900",
+                      color: isUnread ? THEME.redInk : THEME.brandInk,
+                    }}
+                  >
+                    !
+                  </Text>
+                </View>
+              )}
 
               <View style={{ flex: 1 }}>
                 <View style={styles.rowBetween}>
@@ -323,14 +332,14 @@ export default function AlertsScreen() {
                 <Text style={styles.itemSub}>
                   {deal ? (
                     <>
-                      특가{" "}
+                      {deal.promotionLabel ? `${deal.promotionLabel} · ` : ""}
                       <Text style={styles.mono}>
-                        {deal.dealPrice.toLocaleString()}원
+                        {deal.effectivePrice.toLocaleString()}원
                       </Text>{" "}
-                      · 기간 {deal.startsAt}~{deal.endsAt} · 출처: {deal.source}
+                      · {storeName ?? "매장 정보 없음"} · {deal.endDate}까지
                     </>
                   ) : (
-                    <>dealId={item.dealId}</>
+                    <>알림 정보를 찾을 수 없어요</>
                   )}
                 </Text>
 
@@ -350,18 +359,6 @@ export default function AlertsScreen() {
                       <Text style={styles.btnText}>확인 처리</Text>
                     </Pressable>
                   ) : null}
-
-                  <Pressable
-                    onPress={() => router.push("/(tabs)/alerts_rules")}
-                    style={({ pressed }) => [
-                      styles.iconBtn,
-                      pressed && { opacity: 0.9 },
-                    ]}
-                  >
-                    <Text style={{ fontWeight: "900", color: THEME.text }}>
-                      ✎
-                    </Text>
-                  </Pressable>
                 </View>
               </View>
             </View>
@@ -556,7 +553,6 @@ const styles: any = {
     shadowOpacity: 0.05,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
   },
   itemIcon: {
     width: 38,
@@ -567,6 +563,12 @@ const styles: any = {
     backgroundColor: THEME.greenBg,
     alignItems: "center",
     justifyContent: "center",
+  },
+  itemLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(107,114,128,0.08)",
   },
 
   rowBetween: {
