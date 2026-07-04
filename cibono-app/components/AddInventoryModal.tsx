@@ -120,9 +120,9 @@ export default function AddInventoryModal({ visible, onClose, onSuccess }: Props
   const handleAdd = async () => {
     setError("");
     const trimmedName = name.trim();
-    if (!trimmedName) { setError("품목명을 입력해줘."); return; }
+    if (!trimmedName) { setError("품목명을 입력해주세요."); return; }
     const parsedQty = Number(qty || "1");
-    if (!Number.isFinite(parsedQty) || parsedQty <= 0) { setError("수량은 0보다 큰 숫자여야 해."); return; }
+    if (!Number.isFinite(parsedQty) || parsedQty <= 0) { setError("수량은 0보다 큰 숫자여야 해요."); return; }
     setSaving(true);
     try {
       const body: any = {
@@ -138,7 +138,7 @@ export default function AddInventoryModal({ visible, onClose, onSuccess }: Props
       onSuccess();
       onClose();
     } catch {
-      setError("추가 중 오류가 발생했어.");
+      setError("추가 중 오류가 발생했어요.");
     } finally {
       setSaving(false);
     }

@@ -194,9 +194,9 @@ export default function ShoppingListScreen() {
                 size={40}
                 color={THEME.muted}
               />
-              <Text style={styles.emptyTitle}>쇼핑리스트가 비어있어</Text>
+              <Text style={styles.emptyTitle}>쇼핑리스트가 비어있어요</Text>
               <Text style={styles.emptyDesc}>
-                레시피 상세에서 재료를 추가하거나 직접 입력해봐.
+                레시피 상세에서 재료를 추가하거나 직접 입력해보세요.
               </Text>
             </View>
           }

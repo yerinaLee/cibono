@@ -131,12 +131,12 @@ export default function AdminNotificationsScreen() {
       setShowForm(false);
       load();
     } catch {
-      Alert.alert("저장 실패", "백엔드 오류가 발생했어.");
+      Alert.alert("저장 실패", "백엔드 오류가 발생했어요.");
     }
   };
 
   const deleteConfig = (id: number) => {
-    Alert.alert("삭제 확인", "이 알림 스케줄을 삭제할까?", [
+    Alert.alert("삭제 확인", "이 알림 스케줄을 삭제할까요?", [
       { text: "취소", style: "cancel" },
       {
         text: "삭제", style: "destructive",
@@ -152,14 +152,14 @@ export default function AdminNotificationsScreen() {
     setTriggering(id);
     try {
       await api.post(`/admin/notifications/configs/${id}/trigger`);
-      Alert.alert("발송 완료", "푸시 알림을 전송했어. 백엔드 로그를 확인해봐.");
+      Alert.alert("발송 완료", "푸시 알림을 전송했어요. 백엔드 로그를 확인해보세요.");
     } catch {
-      Alert.alert("발송 실패", "백엔드 오류가 발생했어.");
+      Alert.alert("발송 실패", "백엔드 오류가 발생했어요.");
     } finally { setTriggering(null); }
   };
 
   const deleteToken = (id: number) => {
-    Alert.alert("토큰 삭제", "이 기기를 알림 대상에서 제거할까?", [
+    Alert.alert("토큰 삭제", "이 기기를 알림 대상에서 제거할까요?", [
       { text: "취소", style: "cancel" },
       {
         text: "삭제", style: "destructive",
@@ -291,7 +291,7 @@ export default function AdminNotificationsScreen() {
           <Text style={styles.sectionTitle}>알림 스케줄</Text>
           {configs.length === 0 && (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>등록된 알림이 없어. + 버튼으로 추가해봐.</Text>
+              <Text style={styles.emptyText}>등록된 알림이 없어요. + 버튼으로 추가해보세요.</Text>
             </View>
           )}
           {configs.map((cfg) => (
@@ -350,7 +350,7 @@ export default function AdminNotificationsScreen() {
           <Text style={[styles.sectionTitle, { marginTop: 8 }]}>등록된 기기</Text>
           {tokens.length === 0 && (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>앱에서 알림 권한을 허용하면 자동 등록돼.</Text>
+              <Text style={styles.emptyText}>앱에서 알림 권한을 허용하면 자동 등록돼요.</Text>
             </View>
           )}
           {tokens.map((t) => (

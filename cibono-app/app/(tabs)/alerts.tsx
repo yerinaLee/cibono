@@ -368,12 +368,12 @@ export default function AlertsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.emptyTitle}>
-                {tab === "unread" ? "미확인 알림이 없어" : "확인된 알림이 없어"}
+                {tab === "unread" ? "미확인 알림이 없어요" : "확인된 알림이 없어요"}
               </Text>
               <Text style={styles.emptyText}>
                 {tab === "unread"
-                  ? "스캔을 실행하거나 규칙을 추가해봐."
-                  : "최근 확인한 알림이 없거나 아직 기록이 없어."}
+                  ? "스캔을 실행하거나 규칙을 추가해보세요."
+                  : "최근 확인한 알림이 없거나 아직 기록이 없어요."}
               </Text>
             </View>
           </View>

@@ -77,15 +77,15 @@ export default function IngredientRecipesScreen() {
 
       {!loading && error && (
         <View style={styles.center}>
-          <Text style={styles.errorText}>레시피를 불러오지 못했어.</Text>
+          <Text style={styles.errorText}>레시피를 불러오지 못했어요.</Text>
         </View>
       )}
 
       {!loading && !error && cards.length === 0 && (
         <View style={styles.center}>
           <Text style={{ fontSize: 32 }}>🍽️</Text>
-          <Text style={styles.emptyTitle}>{ingredient} 관련 레시피가 없어</Text>
-          <Text style={styles.emptyDesc}>식품안전처 DB에서 찾지 못했어.</Text>
+          <Text style={styles.emptyTitle}>{ingredient} 관련 레시피가 없어요</Text>
+          <Text style={styles.emptyDesc}>식품안전처 DB에서 찾지 못했어요.</Text>
         </View>
       )}
 

@@ -82,6 +82,13 @@ const DATE_PRESETS = [
   { label: "+1년", days: 365 },
 ];
 
+// 이모지 바로 뒤에 한글이 붙으면 안드로이드에서 텍스트 셰이핑이 깨져
+// 뒤따르는 글자가 안 보이는 경우가 있어, 이모지와 텍스트를 별도 <Text>로 분리해서 렌더링한다.
+function splitEmoji(s: string): [string, string] {
+  const chars = Array.from(s);
+  return [chars[0] ?? "", chars.slice(1).join("")];
+}
+
 function categoryIcon(name?: string | null): string {
   switch (name) {
     case "채소/과일":
@@ -267,6 +274,7 @@ function CategorySelector({
           onPress={() => onChange(null)}
           style={({ pressed }) => [
             styles.presetChip,
+            styles.categoryChipRow,
             value === null && styles.presetChipActive,
             pressed && { opacity: 0.8 },
           ]}
@@ -277,29 +285,39 @@ function CategorySelector({
               value === null && styles.presetChipTextActive,
             ]}
           >
-            🧺 미분류
+            🧺
           </Text>
-        </Pressable>
-        {categories.map((cat) => (
-          <Pressable
-            key={cat.id}
-            onPress={() => onChange(cat.id)}
-            style={({ pressed }) => [
-              styles.presetChip,
-              value === cat.id && styles.presetChipActive,
-              pressed && { opacity: 0.8 },
+          <Text
+            style={[
+              styles.presetChipText,
+              value === null && styles.presetChipTextActive,
             ]}
           >
-            <Text
-              style={[
-                styles.presetChipText,
-                value === cat.id && styles.presetChipTextActive,
+            {" "}
+            미분류
+          </Text>
+        </Pressable>
+        {categories.map((cat) => {
+          const textStyle = [
+            styles.presetChipText,
+            value === cat.id && styles.presetChipTextActive,
+          ];
+          return (
+            <Pressable
+              key={cat.id}
+              onPress={() => onChange(cat.id)}
+              style={({ pressed }) => [
+                styles.presetChip,
+                styles.categoryChipRow,
+                value === cat.id && styles.presetChipActive,
+                pressed && { opacity: 0.8 },
               ]}
             >
-              {categoryIcon(cat.name)} {cat.name}
-            </Text>
-          </Pressable>
-        ))}
+              <Text style={textStyle}>{categoryIcon(cat.name)}</Text>
+              <Text style={textStyle}> {cat.name}</Text>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -455,12 +473,12 @@ export default function InventoryScreen() {
     setError("");
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setError("품목명을 입력해줘.");
+      setError("품목명을 입력해주세요.");
       return;
     }
     const parsedQty = Number(qty || "1");
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
-      setError("수량은 0보다 큰 숫자여야 해.");
+      setError("수량은 0보다 큰 숫자여야 해요.");
       return;
     }
     try {
@@ -555,7 +573,7 @@ export default function InventoryScreen() {
     setScanError("");
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      setScanError("사진 접근 권한이 필요해.");
+      setScanError("사진 접근 권한이 필요해요.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -584,7 +602,7 @@ export default function InventoryScreen() {
         })),
       );
       if ((res.data ?? []).length === 0)
-        setScanError("식재료를 찾지 못했어. 더 선명한 이미지를 사용해봐.");
+        setScanError("식재료를 찾지 못했어요. 더 선명한 이미지를 사용해보세요.");
     } catch (e: any) {
       const serverMsg =
         e?.response?.data?.message ||
@@ -622,7 +640,7 @@ export default function InventoryScreen() {
     setError("");
     const parsedQty = Number(editQty || "1");
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
-      setError("수량은 0보다 큰 숫자여야 해.");
+      setError("수량은 0보다 큰 숫자여야 해요.");
       return;
     }
     try {
@@ -726,25 +744,28 @@ export default function InventoryScreen() {
             keyExtractor={(k) => k}
             contentContainerStyle={{ gap: 6, paddingBottom: 4 }}
             scrollEventThrottle={16}
-            renderItem={({ item: k }) => (
-              <Pressable
-                onPress={() => setCategoryFilter(k)}
-                style={({ pressed }) => [
-                  styles.categoryChip,
-                  categoryFilter === k && styles.categoryChipActive,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    categoryFilter === k && styles.categoryChipTextActive,
+            renderItem={({ item: k }) => {
+              const [icon, label] =
+                k === "ALL" ? ["", "전체"] : splitEmoji(k);
+              const textStyle = [
+                styles.categoryChipText,
+                categoryFilter === k && styles.categoryChipTextActive,
+              ];
+              return (
+                <Pressable
+                  onPress={() => setCategoryFilter(k)}
+                  style={({ pressed }) => [
+                    styles.categoryChip,
+                    styles.categoryChipRow,
+                    categoryFilter === k && styles.categoryChipActive,
+                    pressed && { opacity: 0.9 },
                   ]}
                 >
-                  {k === "ALL" ? "전체" : k}
-                </Text>
-              </Pressable>
-            )}
+                  {icon ? <Text style={textStyle}>{icon}</Text> : null}
+                  <Text style={textStyle}>{icon ? ` ${label}` : label}</Text>
+                </Pressable>
+              );
+            }}
           />
         </View>
 
@@ -972,9 +993,9 @@ export default function InventoryScreen() {
               <Text style={{ fontSize: 16 }}>🥬</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>재고가 비어있어</Text>
+              <Text style={styles.emptyTitle}>재고가 비어있어요</Text>
               <Text style={styles.emptyText}>
-                재료를 추가하면 D-day 기준으로 임박 강조/추천이 동작해.
+                재료를 추가하면 D-day 기준으로 임박 강조/추천이 동작해요.
               </Text>
             </View>
             <Pressable
@@ -1690,6 +1711,7 @@ const styles: any = {
     borderColor: THEME.border,
     backgroundColor: "#FFFFFF",
   },
+  categoryChipRow: { flexDirection: "row", alignItems: "center" },
   categoryChipActive: {
     borderColor: "rgba(127,183,126,0.5)",
     backgroundColor: "rgba(127,183,126,0.18)",

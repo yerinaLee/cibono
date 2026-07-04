@@ -145,7 +145,7 @@ export default function RecipeDetailScreen() {
     api
       .get<RecipeDetail>("/recipes/crawl", { params: { name } })
       .then((res) => setDetail(res.data))
-      .catch(() => setError("레시피를 불러오지 못했어. 잠시 후 다시 시도해봐."))
+      .catch(() => setError("레시피를 불러오지 못했어요. 잠시 후 다시 시도해보세요."))
       .finally(() => setLoading(false));
   };
 
@@ -235,7 +235,7 @@ export default function RecipeDetailScreen() {
               <View style={styles.section}>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                   <Text style={styles.sectionTitle}>재료</Text>
-                  <Text style={styles.sectionHint}>탭하면 쇼핑리스트에 담을 수 있어</Text>
+                  <Text style={styles.sectionHint}>탭하면 쇼핑리스트에 담을 수 있어요</Text>
                 </View>
                 <View style={styles.ingredientGrid}>
                   {detail.ingredients.map((ing, i) => {
@@ -285,7 +285,7 @@ export default function RecipeDetailScreen() {
                   {blogsLoading && <ActivityIndicator size="small" color={THEME.brand} />}
                 </View>
                 {!blogsLoading && blogs.length === 0 && (
-                  <Text style={styles.noBlogs}>검색 결과가 없어.</Text>
+                  <Text style={styles.noBlogs}>검색 결과가 없어요.</Text>
                 )}
                 {blogs.map((blog, i) => (
                   <View key={i} style={styles.blogItem}>
@@ -343,7 +343,7 @@ export default function RecipeDetailScreen() {
           >
             <Text style={styles.floatingBtnText}>
               {cartSuccess
-                ? "✓ 담겼어!"
+                ? "✓ 담겼어요!"
                 : addingToCart
                 ? "추가 중..."
                 : `🛒 ${selectedIngs.size}개 쇼핑리스트에 담기`}
