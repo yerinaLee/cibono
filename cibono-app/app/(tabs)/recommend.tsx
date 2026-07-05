@@ -92,6 +92,8 @@ const THEME = {
   ok: "#27AE60",
 };
 
+const SCROLL_TOP_THRESHOLD = 300;
+
 function daysUntil(dateStr?: string | null): number | null {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split("-").map((v) => Number(v));
@@ -119,6 +121,17 @@ export default function RecommendScreen() {
     [],
   );
   const cancelRef = useRef(false);
+  const listRef = useRef<FlatList>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const handleScroll = useCallback((e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    setShowScrollTop(y > SCROLL_TOP_THRESHOLD);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   const [blogResults, setBlogResults] = useState<BlogSearchResult[]>([]);
   const [blogLoading, setBlogLoading] = useState(false);
@@ -612,8 +625,11 @@ export default function RecommendScreen() {
       ) : null}
 
       <FlatList
+        ref={listRef}
         data={filtered.slice(0, 8)}
         keyExtractor={(x, idx) => `${x.name}-${idx}`}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={load} />
         }
@@ -797,6 +813,19 @@ export default function RecommendScreen() {
           )
         }
       />
+
+      {showScrollTop ? (
+        <Pressable
+          onPress={scrollToTop}
+          style={({ pressed }) => [
+            styles.scrollTopBtn,
+            pressed && { opacity: 0.85 },
+          ]}
+          accessibilityLabel="위로 이동"
+        >
+          <MaterialIcons name="arrow-upward" size={22} color="#fff" />
+        </Pressable>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -1033,6 +1062,23 @@ const styles: any = {
   },
   emptyTitle: { fontSize: 14, fontWeight: "900", color: THEME.text },
   emptyText: { marginTop: 2, fontSize: 12, color: THEME.muted, lineHeight: 16 },
+
+  scrollTopBtn: {
+    position: "absolute",
+    right: 16,
+    bottom: 50,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: THEME.brandInk,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
 
   blogRow: {
     flexDirection: "row",

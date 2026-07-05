@@ -34,6 +34,7 @@ const THEME = {
 };
 
 const UNIT_PRESETS = ["개", "병", "묶음", "g"];
+const SCROLL_TOP_THRESHOLD = 300;
 
 export default function ShoppingListScreen() {
   const router = useRouter();
@@ -58,6 +59,17 @@ export default function ShoppingListScreen() {
   const [updating, setUpdating] = useState(false);
 
   const openSwipeRef = useRef<Swipeable | null>(null);
+  const listRef = useRef<FlatList>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const handleScroll = useCallback((e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    setShowScrollTop(y > SCROLL_TOP_THRESHOLD);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -184,8 +196,11 @@ export default function ShoppingListScreen() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={filtered}
           keyExtractor={(x) => String(x.id)}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           contentContainerStyle={{ padding: 14, paddingBottom: 24, gap: 10 }}
           ListEmptyComponent={
             <View style={styles.empty}>
@@ -264,6 +279,19 @@ export default function ShoppingListScreen() {
           )}
         />
       )}
+
+      {showScrollTop ? (
+        <Pressable
+          onPress={scrollToTop}
+          style={({ pressed }) => [
+            styles.scrollTopBtn,
+            pressed && { opacity: 0.85 },
+          ]}
+          accessibilityLabel="위로 이동"
+        >
+          <MaterialIcons name="arrow-upward" size={22} color="#fff" />
+        </Pressable>
+      ) : null}
 
       {/* 추가 모달 */}
       <Modal
@@ -577,6 +605,23 @@ const styles: any = {
     marginLeft: 8,
   },
   deleteActionText: { color: "#fff", fontSize: 12, fontWeight: "900" },
+
+  scrollTopBtn: {
+    position: "absolute",
+    right: 16,
+    bottom: 50,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: THEME.brandInk,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
 
   empty: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: "900", color: THEME.text },

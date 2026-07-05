@@ -40,7 +40,6 @@ const NAV: {
 }[] = [
   { name: "dashboard", label: "홈", icon: "home" },
   { name: "deals", label: "특가", icon: "local-offer" },
-  { name: "alerts", label: "알림", icon: "notifications" },
   { name: "inventory", label: "냉장고", icon: "kitchen" },
   { name: "recommend", label: "추천", icon: "restaurant" },
   { name: "alerts_rules", label: "규칙", icon: "rule" },
