@@ -281,21 +281,22 @@ export default function AlertsScreen() {
             const label = deal ? `${deal.itemName} 특가 알림` : `알림 #${item.id}`;
 
             return (
-              <View style={styles.itemCard}>
-                <Pressable
-                  onPress={() => handleIconPress(deal?.storeId)}
-                  hitSlop={6}
-                >
-                  {logo ? (
-                    <Image source={logo} style={styles.itemLogo} />
-                  ) : (
-                    <View style={styles.itemIcon}>
-                      <Text style={{ fontWeight: "900", color: THEME.brandInk }}>
-                        !
-                      </Text>
-                    </View>
-                  )}
-                </Pressable>
+              <Pressable
+                onPress={() => handleIconPress(deal?.storeId)}
+                style={({ pressed }) => [
+                  styles.itemCard,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                {logo ? (
+                  <Image source={logo} style={styles.itemLogo} />
+                ) : (
+                  <View style={styles.itemIcon}>
+                    <Text style={{ fontWeight: "900", color: THEME.brandInk }}>
+                      !
+                    </Text>
+                  </View>
+                )}
 
                 <View style={{ flex: 1 }}>
                   <View style={styles.rowBetween}>
@@ -334,7 +335,7 @@ export default function AlertsScreen() {
                     )}
                   </Text>
                 </View>
-              </View>
+              </Pressable>
             );
           }}
           ListEmptyComponent={
