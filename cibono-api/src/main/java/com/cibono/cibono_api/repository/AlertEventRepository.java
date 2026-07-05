@@ -14,4 +14,6 @@ public interface AlertEventRepository extends JpaRepository<AlertEvent, Long> {
 	
 	Optional<AlertEvent> findByUserIdAndDealId(Long userId, Long dealId);
 	
+	void deleteByUserId(Long userId);
+	
 }

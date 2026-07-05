@@ -289,6 +289,19 @@ export default function DashboardScreen() {
             <MaterialIcons name="shopping-cart" size={20} color={THEME.text} />
           </Pressable>
           <Pressable
+            onPress={() => router.push("/(tabs)/alerts")}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <MaterialIcons
+              name="notifications-none"
+              size={20}
+              color={THEME.text}
+            />
+          </Pressable>
+          <Pressable
             onPress={() => router.push("/settings")}
             style={({ pressed }) => [
               styles.iconBtn,

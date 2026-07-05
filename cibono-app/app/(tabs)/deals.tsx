@@ -1,6 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Image,
@@ -49,6 +49,8 @@ const THEME = {
   promoInk: "#C13F3F",
 };
 
+const SCROLL_TOP_THRESHOLD = 300;
+
 export default function DealsScreen() {
   const [items, setItems] = useState<Deal[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -61,6 +63,9 @@ export default function DealsScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [store, setStore] = useState("전체");
   const [period, setPeriod] = useState("오늘");
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const listRef = useRef<FlatList>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -134,6 +139,15 @@ export default function DealsScreen() {
     return n;
   }, [store, period]);
 
+  const handleScroll = useCallback((e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    setShowScrollTop(y > SCROLL_TOP_THRESHOLD);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: THEME.bg }}
@@ -179,17 +193,6 @@ export default function DealsScreen() {
             </Pressable>
             {activeFilterCount > 0 && <View style={styles.badgeDot} />}
           </View>
-          <View style={{ flex: 1 }} />
-          <Pressable
-            onPress={() => router.push("/(tabs)/alerts_rules")}
-            style={({ pressed }) => [
-              styles.iconCircleAdd,
-              pressed && { opacity: 0.85 },
-            ]}
-            accessibilityLabel="규칙 추가"
-          >
-            <MaterialIcons name="add" size={22} color={THEME.brandInk} />
-          </Pressable>
         </View>
 
         {/* 인라인 검색창 */}
@@ -303,14 +306,18 @@ export default function DealsScreen() {
         ) : null}
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(x) => String(x.id)}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={load} />
-        }
-        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 20 }}
-        renderItem={({ item }) => {
+      <View style={{ flex: 1 }}>
+        <FlatList
+          ref={listRef}
+          data={filtered}
+          keyExtractor={(x) => String(x.id)}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={load} />
+          }
+          contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 20 }}
+          renderItem={({ item }) => {
           const storeName = item.store.id
             ? storeNameById.get(item.store.id)
             : undefined;
@@ -381,7 +388,33 @@ export default function DealsScreen() {
             </View>
           </View>
         }
-      />
+        />
+
+        {showScrollTop ? (
+          <Pressable
+            onPress={scrollToTop}
+            style={({ pressed }) => [
+              styles.scrollTopBtn,
+              pressed && { opacity: 0.85 },
+            ]}
+            accessibilityLabel="위로 이동"
+          >
+            <MaterialIcons name="arrow-upward" size={22} color="#fff" />
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          onPress={() => router.push("/(tabs)/alerts_rules")}
+          style={({ pressed }) => [
+            styles.fabAlertRules,
+            pressed && { opacity: 0.9 },
+          ]}
+          accessibilityLabel="특가 알림 설정"
+        >
+          <MaterialIcons name="add-alert" size={18} color={THEME.brandInk} />
+          <Text style={styles.fabAlertRulesText}>특가 알림 설정</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -614,6 +647,43 @@ const styles: any = {
     alignItems: "center",
     justifyContent: "center",
   },
+
+  scrollTopBtn: {
+    position: "absolute",
+    right: 16,
+    bottom: 110,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: THEME.brandInk,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  fabAlertRules: {
+    position: "absolute",
+    right: 16,
+    bottom: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: THEME.brand,
+    borderWidth: 1,
+    borderColor: "rgba(15,31,22,0.15)",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  fabAlertRulesText: { color: THEME.brandInk, fontWeight: "900", fontSize: 13 },
 
   empty: {
     marginTop: 8,

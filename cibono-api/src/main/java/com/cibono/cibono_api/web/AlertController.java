@@ -33,6 +33,16 @@ public class AlertController {
 		return Map.of("updated_count", count);
 	}
 	
+	@DeleteMapping("/alerts/{id}")
+	public void deleteEvent(@PathVariable long id) {
+		alertService.deleteEvent(UserContext.userId(), id);
+	}
+	
+	@DeleteMapping("/alerts")
+	public void deleteAllEvents() {
+		alertService.deleteAllEvents(UserContext.userId());
+	}
+	
 	@PostMapping("/admin/alerts/run-scan")
 	public int runScanNow() {
 		return alertService.runDailyScan();

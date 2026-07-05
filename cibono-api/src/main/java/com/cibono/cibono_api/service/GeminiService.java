@@ -51,6 +51,50 @@ public class GeminiService {
 	private static final Set<String> WEIGHT_VOLUME_UNITS =
 			Set.of("g", "kg", "mg", "ml", "l", "oz", "lb", "cc", "gram", "liter");
 	
+	private static final Map<String, Object> FLYER_DEAL_ITEM_SCHEMA = Map.of(
+			"type", "OBJECT",
+			"properties", Map.ofEntries(
+					Map.entry("itemName", Map.of("type", "STRING")),
+					Map.entry("dealPrice", Map.of("type", "INTEGER")),
+					Map.entry("originalPrice", Map.of("type", "INTEGER", "nullable", true)),
+					Map.entry("promotionType", Map.of(
+							"type", "STRING",
+							"enum", List.of("PLUS_N", "PERCENT_OFF", "SPECIAL_PRICE"),
+							"nullable", true)),
+					Map.entry("buyQty", Map.of("type", "INTEGER", "nullable", true)),
+					Map.entry("freeQty", Map.of("type", "INTEGER", "nullable", true)),
+					Map.entry("quantity", Map.of("type", "NUMBER", "nullable", true)),
+					Map.entry("unit", Map.of(
+							"type", "STRING",
+							"enum", List.of("개", "kg", "g", "ml", "L"),
+							"nullable", true))
+			),
+			"required", List.of("itemName", "dealPrice")
+	);
+	
+	private static final Map<String, Object> FLYER_DEAL_LIST_SCHEMA = Map.of(
+			"type", "ARRAY",
+			"items", FLYER_DEAL_ITEM_SCHEMA
+	);
+	
+	private static final Map<String, Object> FLYER_PARSE_RESULT_SCHEMA = Map.of(
+			"type", "OBJECT",
+			"properties", Map.of(
+					"startDate", Map.of("type", "STRING", "nullable", true),
+					"endDate", Map.of("type", "STRING", "nullable", true),
+					"items", FLYER_DEAL_LIST_SCHEMA
+			),
+			"required", List.of("items")
+	);
+	
+	private static Map<String, Object> generationConfig(Map<String, Object> responseSchema) {
+		return Map.of(
+				"temperature", 0.0,
+				"responseMimeType", "application/json",
+				"responseSchema", responseSchema
+		);
+	}
+	
 	private ScannedItem normalizeUnit(ScannedItem item) {
 		if (item.unit() == null) {
 			return item;
@@ -164,7 +208,8 @@ public class GeminiService {
 						"data", base64Image)
 					)
 				)
-			))
+			)),
+			"generationConfig", generationConfig(FLYER_DEAL_LIST_SCHEMA)
 		);
 		
 		String text = callGeminiRaw(body, "전단지 파싱", flyerApiKey);
@@ -231,7 +276,8 @@ public class GeminiService {
 						"data", base64Image)
 					)
 				)
-			))
+			)),
+			"generationConfig", generationConfig(FLYER_PARSE_RESULT_SCHEMA)
 		);
 		
 		String text = callGeminiRaw(body, "전단지+기간 파싱", flyerApiKey);
