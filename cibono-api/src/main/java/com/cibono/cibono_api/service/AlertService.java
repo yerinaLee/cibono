@@ -134,6 +134,21 @@ public class AlertService {
 		return count;
 	}
 	
+	@Transactional
+	public void deleteEvent(long userId, long eventId) {
+		AlertEvent ev = alertEventRepository.findById(eventId)
+				.orElseThrow(() -> new IllegalArgumentException("event not found"));
+		if (!ev.getUserId().equals(userId)) {
+			throw new IllegalArgumentException("forbidden");
+		}
+		alertEventRepository.delete(ev);
+	}
+	
+	@Transactional
+	public void deleteAllEvents(long userId) {
+		alertEventRepository.deleteByUserId(userId);
+	}
+	
 	/** 오늘 활성 deal을 기준으로, 전체 유저의 price_alert 조건 만족하면 alert_event 생성 */
 	@Transactional
 	public int runDailyScan() {
@@ -160,9 +175,12 @@ public class AlertService {
 				ev.setUserId(rule.getUserId());
 				ev.setDealId(d.getId());
 				ev.setRuleId(rule.getId());
+				// 푸시 알림이 발송되는 시점에 이미 사용자에게 노출되므로 확인된 것으로 간주
+				ev.setSeen(true);
+				ev.setReadAt(OffsetDateTime.now());
 				alertEventRepository.save(ev);
 				created++;
-				
+
 				sendPriceAlertPush(rule, d);
 			}
 		}

@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS deal (
     item_name  VARCHAR(200) NOT NULL,
     deal_price     INTEGER      NOT NULL,
     original_price INTEGER,
-    quantity     NUMERIC(10, 2) NOT NULL DEFAULT 1,
+    quantity     NUMERIC(10, 2),
     unit         VARCHAR(20),
     starts_at      DATE         NOT NULL,
     ends_at    DATE         NOT NULL,
