@@ -2,8 +2,11 @@ package com.cibono.cibono_api.service;
 
 import com.cibono.cibono_api.domain.Inventory;
 import com.cibono.cibono_api.domain.Recipe;
+import com.cibono.cibono_api.dto.RecipeDto;
 import com.cibono.cibono_api.repository.InventoryRepository;
 import com.cibono.cibono_api.repository.RecipeRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -12,13 +15,17 @@ import java.util.stream.Collectors;
 
 @Service
 public class RecipeService {
-	
+
+	private static final Logger log = LoggerFactory.getLogger(RecipeService.class);
+
 	private final InventoryRepository inventoryRepository;
 	private final RecipeRepository recipeRepository;
-	
-	public RecipeService(InventoryRepository inventoryRepository, RecipeRepository recipeRepository) {
+	private final NaverBlogService naverBlogService;
+
+	public RecipeService(InventoryRepository inventoryRepository, RecipeRepository recipeRepository, NaverBlogService naverBlogService) {
 		this.inventoryRepository = inventoryRepository;
 		this.recipeRepository = recipeRepository;
+		this.naverBlogService = naverBlogService;
 	}
 	
 	public List<RecipeSuggestion> recommendToday(long userId) {
@@ -61,10 +68,35 @@ public class RecipeService {
 							r.getCuisineType()));
 		}
 		
-		return suggestions.stream()
+		List<RecipeSuggestion> top = suggestions.stream()
 				.sorted(Comparator.comparingInt(RecipeSuggestion::score).reversed())
 				.limit(50)
 				.toList();
+
+		return top.stream().map(this::withNaverBlogImage).toList();
+	}
+
+	// 추천 카드 이미지: 레시피명으로 네이버 블로그 검색해서 첫 번째 결과의 이미지를 사용
+	private RecipeSuggestion withNaverBlogImage(RecipeSuggestion s) {
+		String blogImage = resolveFirstNaverBlogImage(s.name());
+		if (blogImage == null) {
+			return s;
+		}
+		return new RecipeSuggestion(s.name(), blogImage, s.ingredients(), s.missingCount(), s.score(), s.cookingTime(), s.cuisineType());
+	}
+
+	private String resolveFirstNaverBlogImage(String recipeName) {
+		try {
+			List<RecipeDto.BlogItem> blogs = naverBlogService.searchBlogs(recipeName);
+			if (blogs.isEmpty()) {
+				return null;
+			}
+			String imageUrl = blogs.get(0).imageUrl();
+			return (imageUrl == null || imageUrl.isBlank()) ? null : imageUrl;
+		} catch (Exception e) {
+			log.warn("[Recommend] '{}' 네이버 블로그 이미지 조회 실패: {}", recipeName, e.getMessage());
+			return null;
+		}
 	}
 	
 	private static String norm(String s) {
