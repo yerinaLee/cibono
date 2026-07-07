@@ -18,7 +18,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import AddInventoryModal from "../../components/AddInventoryModal";
-import { api, explainNetworkHint } from "../../src/api/client";
+import { api, explainNetworkHint, proxyImageUrl } from "../../src/api/client";
 import { getStoreLogo } from "../../src/constants/storeLogos";
 
 type Inventory = {
@@ -617,7 +617,7 @@ export default function DashboardScreen() {
                 >
                   {item.imageUrl ? (
                     <Image
-                      source={{ uri: item.imageUrl }}
+                      source={{ uri: proxyImageUrl(item.imageUrl) ?? item.imageUrl }}
                       style={styles.recoThumb}
                       resizeMode="cover"
                     />

@@ -1,7 +1,8 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { Pressable, Switch, Text, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../src/api/client";
 
@@ -23,22 +24,38 @@ export default function SettingsScreen() {
   const [dinnerEnabled, setDinnerEnabled] = useState(true);
   const [dealEnabled, setDealEnabled] = useState(true);
 
-  useEffect(() => {
-    api.get<{ role: string }>("/me").then((res) => {
-      setIsAdmin(res.data.role === "ADMIN");
-    }).catch(() => {});
+  useFocusEffect(
+    useCallback(() => {
+      api
+        .get<{ role: string }>("/me")
+        .then((res) => {
+          setIsAdmin(res.data.role === "ADMIN");
+        })
+        .catch(() => {});
 
-    api.get<{ lunchEnabled: boolean; dinnerEnabled: boolean; dealEnabled: boolean }>("/notifications/preferences")
-      .then((res) => {
-        setLunchEnabled(res.data.lunchEnabled);
-        setDinnerEnabled(res.data.dinnerEnabled);
-        setDealEnabled(res.data.dealEnabled);
-      })
-      .catch(() => {});
-  }, []);
+      api
+        .get<{
+          lunchEnabled: boolean;
+          dinnerEnabled: boolean;
+          dealEnabled: boolean;
+        }>("/notifications/preferences")
+        .then((res) => {
+          setLunchEnabled(res.data.lunchEnabled);
+          setDinnerEnabled(res.data.dinnerEnabled);
+          setDealEnabled(res.data.dealEnabled);
+        })
+        .catch(() => {});
+    }, []),
+  );
 
   const updatePreference = (lunch: boolean, dinner: boolean, deal: boolean) => {
-    api.put("/notifications/preferences", { lunchEnabled: lunch, dinnerEnabled: dinner, dealEnabled: deal }).catch(() => {});
+    api
+      .put("/notifications/preferences", {
+        lunchEnabled: lunch,
+        dinnerEnabled: dinner,
+        dealEnabled: deal,
+      })
+      .catch(() => {});
   };
 
   return (
@@ -54,22 +71,21 @@ export default function SettingsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <View style={{ padding: 14, gap: 12 }}>
+      <ScrollView contentContainerStyle={{ padding: 14, gap: 12 }}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>앱 정보</Text>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>앱 이름</Text>
             <Text style={styles.rowValue}>Cibono</Text>
           </View>
-          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: THEME.border }]}>
+          <View
+            style={[
+              styles.row,
+              { borderTopWidth: 1, borderTopColor: THEME.border },
+            ]}
+          >
             <Text style={styles.rowLabel}>버전</Text>
             <Text style={styles.rowValue}>v{APP_VERSION}</Text>
-          </View>
-          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: THEME.border }]}>
-            <Text style={styles.rowLabel}>설명</Text>
-            <Text style={[styles.rowValue, { flex: 1, textAlign: "right" }]}>
-              식재료 관리 · 특가 알림 · 레시피 추천
-            </Text>
           </View>
         </View>
 
@@ -78,13 +94,26 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>관리자</Text>
             <Pressable
               onPress={() => router.push("/admin-notifications")}
-              style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+              style={({ pressed }) => [
+                styles.row,
+                pressed && { opacity: 0.75 },
+              ]}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <MaterialIcons name="notifications-active" size={16} color={THEME.brand} />
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
+                <MaterialIcons
+                  name="notifications-active"
+                  size={16}
+                  color={THEME.brand}
+                />
                 <Text style={styles.rowLabel}>알림 관리</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={18} color={THEME.muted} />
+              <MaterialIcons
+                name="chevron-right"
+                size={18}
+                color={THEME.muted}
+              />
             </Pressable>
           </View>
         )}
@@ -92,7 +121,9 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>알림 설정</Text>
           <View style={styles.row}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
               <MaterialIcons name="wb-sunny" size={16} color={THEME.brand} />
               <Text style={styles.rowLabel}>점심 메뉴 추천</Text>
             </View>
@@ -106,8 +137,15 @@ export default function SettingsScreen() {
               thumbColor="#fff"
             />
           </View>
-          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: THEME.border }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View
+            style={[
+              styles.row,
+              { borderTopWidth: 1, borderTopColor: THEME.border },
+            ]}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
               <MaterialIcons name="nights-stay" size={16} color={THEME.brand} />
               <Text style={styles.rowLabel}>저녁 메뉴 추천</Text>
             </View>
@@ -121,8 +159,15 @@ export default function SettingsScreen() {
               thumbColor="#fff"
             />
           </View>
-          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: THEME.border }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View
+            style={[
+              styles.row,
+              { borderTopWidth: 1, borderTopColor: THEME.border },
+            ]}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
               <MaterialIcons name="local-offer" size={16} color={THEME.brand} />
               <Text style={styles.rowLabel}>특가 알림</Text>
             </View>
@@ -139,21 +184,20 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>기능</Text>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>레시피 데이터</Text>
-            <Text style={styles.rowValue}>식품의약품안전처 COOKRCP01</Text>
-          </View>
-          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: THEME.border }]}>
-            <Text style={styles.rowLabel}>블로그 검색</Text>
-            <Text style={styles.rowValue}>네이버 블로그 API</Text>
-          </View>
-          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: THEME.border }]}>
-            <Text style={styles.rowLabel}>OCR</Text>
-            <Text style={styles.rowValue}>Gemini API</Text>
-          </View>
+          <Pressable
+            onPress={() => router.push("/license")}
+            style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <MaterialIcons name="description" size={16} color={THEME.brand} />
+              <Text style={styles.rowLabel}>라이선스</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={18} color={THEME.muted} />
+          </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -169,24 +213,37 @@ const styles: any = {
     backgroundColor: THEME.bg,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: "center", justifyContent: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.85)",
-    borderWidth: 1, borderColor: THEME.border,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   backIcon: { fontSize: 18, color: THEME.text },
   headerTitle: {
-    flex: 1, textAlign: "center",
-    fontSize: 17, fontWeight: "900", color: THEME.text,
+    flex: 1,
+    textAlign: "center",
+    fontSize: 17,
+    fontWeight: "900",
+    color: THEME.text,
   },
   section: {
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 16, borderWidth: 1, borderColor: THEME.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: THEME.border,
     overflow: "hidden",
   },
   sectionTitle: {
-    fontSize: 12, fontWeight: "900", color: THEME.muted,
-    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8,
+    fontSize: 12,
+    fontWeight: "900",
+    color: THEME.muted,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   row: {
     flexDirection: "row",

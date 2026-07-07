@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 import { getStoreLogo } from "../../src/constants/storeLogos";
@@ -52,6 +52,7 @@ const THEME = {
 const SCROLL_TOP_THRESHOLD = 300;
 
 export default function DealsScreen() {
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState<Deal[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState("");
@@ -381,9 +382,9 @@ export default function DealsScreen() {
               <Text style={{ fontSize: 16 }}>🏪</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>조건에 맞는 특가가 없어</Text>
+              <Text style={styles.emptyTitle}>조건에 맞는 특가가 없어요</Text>
               <Text style={styles.emptyText}>
-                기간을 “이번주”로 바꾸거나 기준가를 조정해봐.
+                기간을 “이번주”로 바꾸거나 기준가를 조정해보세요.
               </Text>
             </View>
           </View>
@@ -395,6 +396,7 @@ export default function DealsScreen() {
             onPress={scrollToTop}
             style={({ pressed }) => [
               styles.scrollTopBtn,
+              { bottom: 150 + insets.bottom },
               pressed && { opacity: 0.85 },
             ]}
             accessibilityLabel="위로 이동"
@@ -407,6 +409,7 @@ export default function DealsScreen() {
           onPress={() => router.push("/(tabs)/alerts_rules")}
           style={({ pressed }) => [
             styles.fabAlertRules,
+            { bottom: 90 + insets.bottom },
             pressed && { opacity: 0.9 },
           ]}
           accessibilityLabel="특가 알림 설정"

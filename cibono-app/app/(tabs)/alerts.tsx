@@ -13,7 +13,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 import { getStoreLogo } from "../../src/constants/storeLogos";
@@ -56,6 +56,8 @@ type ConfirmTarget = { type: "single"; id: number; name: string } | { type: "all
 const SCROLL_TOP_THRESHOLD = 300;
 
 export default function AlertsScreen() {
+  const insets = useSafeAreaInsets();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [items, setItems] = useState<AlertEvent[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState("");
@@ -146,6 +148,9 @@ export default function AlertsScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
+      api.get<{ role: string }>("/me").then((res) => {
+        setIsAdmin(res.data.role === "ADMIN");
+      }).catch(() => {});
     }, [load]),
   );
 
@@ -199,16 +204,18 @@ export default function AlertsScreen() {
               color={showSearch ? THEME.brand : THEME.text}
             />
           </Pressable>
-          <Pressable
-            onPress={runScan}
-            style={({ pressed }) => [
-              styles.iconCircle,
-              pressed && { opacity: 0.85 },
-            ]}
-            accessibilityLabel="스캔 실행"
-          >
-            <MaterialIcons name="radar" size={20} color={THEME.text} />
-          </Pressable>
+          {isAdmin ? (
+            <Pressable
+              onPress={runScan}
+              style={({ pressed }) => [
+                styles.iconCircle,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityLabel="스캔 실행"
+            >
+              <MaterialIcons name="radar" size={20} color={THEME.text} />
+            </Pressable>
+          ) : null}
           <View style={{ flex: 1 }} />
           <Pressable
             onPress={requestDeleteAll}
@@ -358,6 +365,7 @@ export default function AlertsScreen() {
             onPress={scrollToTop}
             style={({ pressed }) => [
               styles.scrollTopBtn,
+              { bottom: 90 + insets.bottom },
               pressed && { opacity: 0.85 },
             ]}
             accessibilityLabel="위로 이동"

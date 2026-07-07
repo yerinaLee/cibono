@@ -14,7 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 
@@ -326,6 +326,7 @@ function CategorySelector({
 }
 
 export default function InventoryScreen() {
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState<Inventory[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
   const [error, setError] = useState("");
@@ -1033,6 +1034,7 @@ export default function InventoryScreen() {
           onPress={scrollToTop}
           style={({ pressed }) => [
             styles.scrollTopBtn,
+            { bottom: 90 + insets.bottom },
             pressed && { opacity: 0.85 },
           ]}
           accessibilityLabel="위로 이동"
