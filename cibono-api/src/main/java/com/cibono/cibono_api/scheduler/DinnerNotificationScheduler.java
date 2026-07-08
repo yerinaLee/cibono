@@ -1,6 +1,5 @@
 package com.cibono.cibono_api.scheduler;
 
-import com.cibono.cibono_api.common.UserContext;
 import com.cibono.cibono_api.domain.Inventory;
 import com.cibono.cibono_api.domain.NotificationConfig;
 import com.cibono.cibono_api.domain.PushToken;
@@ -28,6 +27,7 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
+import java.util.stream.Collectors;
 
 @Component
 public class DinnerNotificationScheduler {
@@ -109,44 +109,46 @@ public class DinnerNotificationScheduler {
 	
 	private void executeNotification(NotificationConfig config) {
 		String mealType = config.getMealType();
-		
-		// 사용자별 알림 수신 설정에 따라 토큰 필터링
-		List<PushToken> tokens = pushTokenRepository.findAll().stream()
+
+		// 수신 대상 토큰을 "사용자별"로 그룹핑 (사용자별 알림 수신 설정 반영)
+		// userId가 없는(로그인 전) 토큰은 개인화할 수 없으므로 제외한다.
+		Map<Long, List<PushToken>> tokensByUser = pushTokenRepository.findAll().stream()
+				.filter(pt -> pt.getUserId() != null)
 				.filter(pt -> {
-					if (pt.getUserId() == null) return true;
 					UserNotificationPreference pref = prefRepository.findById(pt.getUserId()).orElse(null);
 					if (pref == null) return true;
 					return "LUNCH".equals(mealType) ? pref.isLunchEnabled() : pref.isDinnerEnabled();
 				})
-				.toList();
-		
-		if (tokens.isEmpty()) {
+				.collect(Collectors.groupingBy(PushToken::getUserId));
+
+		if (tokensByUser.isEmpty()) {
 			log.info("[Notif] 발송 대상 없음 (configId={}, mealType={})", config.getId(), mealType);
 			return;
 		}
-		
-		// 인벤토리 기반 레시피 선택
-		String recipeName = pickRecipeName();
-		if (recipeName == null) {
-			log.info("[Notif] 추천 레시피 없음 (configId={})", config.getId());
-			return;
-		}
-		
-		String body = config.getBodyTemplate().replace("{recipe}", recipeName);
-		log.info("[Notif] 발송: '{}' → {}개 기기 (configId={}, mealType={})", recipeName, tokens.size(), config.getId(), mealType);
-		
-		for (PushToken pt : tokens) {
-			try {
-				pushNotificationService.send(pt.getToken(), config.getTitle(), body, Map.of("recipeName", recipeName));
-			} catch (Exception e) {
-				log.warn("[Notif] 발송 실패 token={}: {}", pt.getToken(), e.getMessage());
+
+		// 사용자마다 본인 재고 기반으로 레시피를 선택해 발송
+		tokensByUser.forEach((userId, userTokens) -> {
+			String recipeName = pickRecipeName(userId);
+			if (recipeName == null) {
+				log.info("[Notif] 추천 레시피 없음 (userId={}, configId={})", userId, config.getId());
+				return;
 			}
-		}
+
+			String body = config.getBodyTemplate().replace("{recipe}", recipeName);
+			log.info("[Notif] 발송: '{}' → {}개 기기 (userId={}, configId={}, mealType={})",
+					recipeName, userTokens.size(), userId, config.getId(), mealType);
+
+			for (PushToken pt : userTokens) {
+				try {
+					pushNotificationService.send(pt.getToken(), config.getTitle(), body, Map.of("recipeName", recipeName));
+				} catch (Exception e) {
+					log.warn("[Notif] 발송 실패 token={}: {}", pt.getToken(), e.getMessage());
+				}
+			}
+		});
 	}
-	
-	private String pickRecipeName() {
-		long userId = UserContext.userId();
-		
+
+	private String pickRecipeName(long userId) {
 		// 1. 재고에서 유통기한 임박 순으로 재료 최대 4개 추출
 		List<Inventory> inventory = inventoryRepository.findByUserIdOrderByExpiresAtAsc(userId);
 		List<String> ingredients = inventory.stream()

@@ -88,11 +88,15 @@ public class RecipeService {
 	private String resolveFirstNaverBlogImage(String recipeName) {
 		try {
 			List<RecipeDto.BlogItem> blogs = naverBlogService.searchBlogs(recipeName);
-			if (blogs.isEmpty()) {
-				return null;
+			// 첫 번째 결과의 og:image 추출이 실패해 비어 있을 수 있으므로,
+			// 이미지가 실제로 있는 "첫 번째 블로그"의 이미지를 사용한다.
+			for (RecipeDto.BlogItem blog : blogs) {
+				String imageUrl = blog.imageUrl();
+				if (imageUrl != null && !imageUrl.isBlank()) {
+					return imageUrl;
+				}
 			}
-			String imageUrl = blogs.get(0).imageUrl();
-			return (imageUrl == null || imageUrl.isBlank()) ? null : imageUrl;
+			return null;
 		} catch (Exception e) {
 			log.warn("[Recommend] '{}' 네이버 블로그 이미지 조회 실패: {}", recipeName, e.getMessage());
 			return null;

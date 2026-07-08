@@ -9,6 +9,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import BackHeader from "@/components/BackHeader";
+import { THEME } from "@/src/theme";
 import { api } from "../src/api/client";
 
 type RecipeCard = {
@@ -16,16 +18,6 @@ type RecipeCard = {
   imageUrl: string;
   sourceUrl: string;
   ingredients: string[];
-};
-
-const THEME = {
-  bg: "#F3F8F1",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-  danger: "#EB5757",
 };
 
 export default function IngredientRecipesScreen() {
@@ -52,21 +44,14 @@ export default function IngredientRecipesScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       {/* 헤더 */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </Pressable>
-        <View style={{ flex: 1, marginHorizontal: 8 }}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
+      <BackHeader
+        title={
+          <>
             <Text style={{ color: THEME.brand }}>{ingredient}</Text> 레시피
-          </Text>
-          <Text style={styles.headerSub}>식품의약품안전처 레시피 DB</Text>
-        </View>
-        <View style={{ width: 36 }} />
-      </View>
+          </>
+        }
+        subtitle="식품의약품안전처 레시피 DB"
+      />
 
       {loading && (
         <View style={styles.center}>
@@ -134,29 +119,6 @@ export default function IngredientRecipesScreen() {
 }
 
 const styles: any = {
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
-    backgroundColor: THEME.bg,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  backIcon: { fontSize: 18, color: THEME.text },
-  headerTitle: { fontSize: 17, fontWeight: "900", color: THEME.text },
-  headerSub: { fontSize: 11, color: THEME.muted, marginTop: 1 },
-
   center: {
     flex: 1,
     alignItems: "center",

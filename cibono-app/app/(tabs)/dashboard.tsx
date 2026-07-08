@@ -20,6 +20,7 @@ import {
 import AddInventoryModal from "../../components/AddInventoryModal";
 import { api, explainNetworkHint, proxyImageUrl } from "../../src/api/client";
 import { getStoreLogo } from "../../src/constants/storeLogos";
+import { THEME } from "@/src/theme";
 
 type Inventory = {
   id: number;
@@ -49,19 +50,6 @@ type Suggestion = {
   ingredients: string[];
   missingCount: number;
   score: number;
-};
-
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-  warn: "#F2C94C",
-  danger: "#EB5757",
-  ok: "#27AE60",
 };
 
 const STORAGE_LABEL: Record<string, string> = {

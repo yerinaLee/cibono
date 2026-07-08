@@ -1,5 +1,8 @@
+import BackHeader from "@/components/BackHeader";
+import { ScrollTopButton } from "@/components/ScrollTopButton";
+import { useScrollTop } from "@/hooks/use-scroll-top";
+import { THEME } from "@/src/theme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,22 +25,9 @@ type ShoppingItem = {
   checked: boolean;
 };
 
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-  danger: "#EB5757",
-};
-
 const UNIT_PRESETS = ["개", "병", "묶음", "g"];
-const SCROLL_TOP_THRESHOLD = 300;
 
 export default function ShoppingListScreen() {
-  const router = useRouter();
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,17 +49,7 @@ export default function ShoppingListScreen() {
   const [updating, setUpdating] = useState(false);
 
   const openSwipeRef = useRef<Swipeable | null>(null);
-  const listRef = useRef<FlatList>(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
-  const handleScroll = useCallback((e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    setShowScrollTop(y > SCROLL_TOP_THRESHOLD);
-  }, []);
-
-  const scrollToTop = useCallback(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  }, []);
+  const { listRef, showScrollTop, handleScroll, scrollToTop } = useScrollTop();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -158,21 +138,17 @@ export default function ShoppingListScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       {/* 헤더 */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.7 }]}
-        >
-          <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>쇼핑리스트</Text>
-        <Pressable
-          onPress={() => setAddOpen(true)}
-          style={({ pressed }) => [styles.iconCircleAdd, pressed && { opacity: 0.85 }]}
-        >
-          <MaterialIcons name="add" size={22} color={THEME.brandInk} />
-        </Pressable>
-      </View>
+      <BackHeader
+        title="쇼핑리스트"
+        right={
+          <Pressable
+            onPress={() => setAddOpen(true)}
+            style={({ pressed }) => [styles.iconCircleAdd, pressed && { opacity: 0.85 }]}
+          >
+            <MaterialIcons name="add" size={22} color={THEME.brandInk} />
+          </Pressable>
+        }
+      />
       {/* 검색 */}
       <View style={styles.searchBar}>
         <MaterialIcons name="search" size={18} color={THEME.muted} />
@@ -280,18 +256,7 @@ export default function ShoppingListScreen() {
         />
       )}
 
-      {showScrollTop ? (
-        <Pressable
-          onPress={scrollToTop}
-          style={({ pressed }) => [
-            styles.scrollTopBtn,
-            pressed && { opacity: 0.85 },
-          ]}
-          accessibilityLabel="위로 이동"
-        >
-          <MaterialIcons name="arrow-upward" size={22} color="#fff" />
-        </Pressable>
-      ) : null}
+      <ScrollTopButton visible={showScrollTop} onPress={scrollToTop} />
 
       {/* 추가 모달 */}
       <Modal
@@ -485,32 +450,6 @@ export default function ShoppingListScreen() {
 }
 
 const styles: any = {
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
-    backgroundColor: THEME.bg,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 17,
-    fontWeight: "900",
-    color: THEME.text,
-  },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -605,23 +544,6 @@ const styles: any = {
     marginLeft: 8,
   },
   deleteActionText: { color: "#fff", fontSize: 12, fontWeight: "900" },
-
-  scrollTopBtn: {
-    position: "absolute",
-    right: 16,
-    bottom: 50,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.brandInk,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
 
   empty: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: "900", color: THEME.text },

@@ -3,15 +3,7 @@ import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const THEME = {
-  bg: "#F3F8F1",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-};
+import { THEME } from "@/src/theme";
 
 type Props = {
   title: string;

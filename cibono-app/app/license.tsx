@@ -1,32 +1,13 @@
-import { useRouter } from "expo-router";
 import React from "react";
 import { Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-const THEME = {
-  bg: "#F3F8F1",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-};
+import { THEME } from "@/src/theme";
+import BackHeader from "@/components/BackHeader";
 
 export default function LicenseScreen() {
-  const router = useRouter();
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>라이선스</Text>
-        <View style={{ width: 36 }} />
-      </View>
+      <BackHeader title="라이선스" />
 
       <ScrollView contentContainerStyle={{ padding: 14, gap: 12 }}>
         <View style={styles.section}>
@@ -105,26 +86,6 @@ export default function LicenseScreen() {
 }
 
 const styles: any = {
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
-    backgroundColor: THEME.bg,
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderWidth: 1, borderColor: THEME.border,
-  },
-  backIcon: { fontSize: 18, color: THEME.text },
-  headerTitle: {
-    flex: 1, textAlign: "center",
-    fontSize: 17, fontWeight: "900", color: THEME.text,
-  },
   section: {
     backgroundColor: "rgba(255,255,255,0.88)",
     borderRadius: 16, borderWidth: 1, borderColor: THEME.border,

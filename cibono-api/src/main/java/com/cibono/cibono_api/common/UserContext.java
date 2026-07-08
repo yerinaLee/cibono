@@ -9,7 +9,10 @@ public final class UserContext {
 	
 	public static long userId() {
 		Long id = CURRENT_USER.get();
-		return id != null ? id : 1L;
+		if (id == null) {
+			throw new IllegalStateException("인증 컨텍스트가 없습니다. 인증된 요청에서만 호출할 수 있습니다.");
+		}
+		return id;
 	}
 	
 	public static String role() {
