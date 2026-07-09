@@ -1,5 +1,5 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -11,8 +11,11 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
+import { ScrollTopButton } from "@/components/ScrollTopButton";
+import { useScrollTop } from "@/hooks/use-scroll-top";
+import { THEME } from "@/src/theme";
 import { api, explainNetworkHint } from "../../src/api/client";
 
 type Store = {
@@ -34,23 +37,6 @@ type Rule = {
 
 const UNIT_OPTIONS = ["전체", "개", "kg", "g", "ml", "L"] as const;
 
-const SCROLL_TOP_THRESHOLD = 300;
-
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-  greenBg: "rgba(127,183,126,0.18)",
-  greenBd: "rgba(127,183,126,0.24)",
-  redBg: "rgba(232,107,107,0.10)",
-  redBd: "rgba(232,107,107,0.22)",
-  redInk: "#5a1a1d",
-};
-
 type RuleDto = {
   id: number;
   item: { name: string };
@@ -63,6 +49,7 @@ type RuleDto = {
 };
 
 export default function AlertRulesScreen() {
+  const insets = useSafeAreaInsets();
   const [rules, setRules] = useState<Rule[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
 
@@ -82,17 +69,7 @@ export default function AlertRulesScreen() {
   const [quantity, setQuantity] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const listRef = useRef<FlatList>(null);
-
-  const handleScroll = useCallback((e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    setShowScrollTop(y > SCROLL_TOP_THRESHOLD);
-  }, []);
-
-  const scrollToTop = useCallback(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  }, []);
+  const { listRef, showScrollTop, handleScroll, scrollToTop } = useScrollTop();
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -211,24 +188,24 @@ export default function AlertRulesScreen() {
     const price = Number(anchorPrice || "0");
 
     if (!name) {
-      setError("품목명을 입력해줘.");
+      setError("품목명을 입력해주세요.");
       return;
     }
     if (!Number.isFinite(price) || price <= 0) {
-      setError("기준가는 0보다 큰 숫자여야 해.");
+      setError("기준가는 0보다 큰 숫자여야 해요.");
       return;
     }
     const trimmedQuantity = quantity.trim();
     const qty = trimmedQuantity ? Number(trimmedQuantity) : null;
     if (trimmedQuantity && (!Number.isFinite(qty) || (qty as number) <= 0)) {
-      setError("수량은 0보다 큰 숫자여야 해.");
+      setError("수량은 0보다 큰 숫자여야 해요.");
       return;
     }
     const nameTaken = rules.some(
       (r) => r.id !== editingId && r.itemName.trim().toLowerCase() === name.toLowerCase(),
     );
     if (nameTaken) {
-      setError("이미 등록된 품목이야. 규칙은 품목당 1개만 만들 수 있어.");
+      setError("이미 등록된 품목이에요. 규칙은 품목당 1개만 만들 수 있어요.");
       return;
     }
 
@@ -421,9 +398,9 @@ export default function AlertRulesScreen() {
               <Text style={{ fontSize: 16 }}>🏷</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>규칙이 없어</Text>
+              <Text style={styles.emptyTitle}>규칙이 없어요</Text>
               <Text style={styles.emptyText}>
-                자주 사는 품목부터 5개만 등록해도 알림이 유용해져.
+                자주 사는 품목부터 5개만 등록해도 알림이 유용해져요.
               </Text>
             </View>
             <Pressable
@@ -439,18 +416,11 @@ export default function AlertRulesScreen() {
         }
       />
 
-      {showScrollTop ? (
-        <Pressable
-          onPress={scrollToTop}
-          style={({ pressed }) => [
-            styles.scrollTopBtn,
-            pressed && { opacity: 0.85 },
-          ]}
-          accessibilityLabel="위로 이동"
-        >
-          <MaterialIcons name="arrow-upward" size={22} color="#fff" />
-        </Pressable>
-      ) : null}
+      <ScrollTopButton
+        visible={showScrollTop}
+        onPress={scrollToTop}
+        style={{ bottom: 90 + insets.bottom }}
+      />
       </View>
 
       {/* Bottom Sheet (Modal) */}
@@ -582,7 +552,7 @@ export default function AlertRulesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.tipTitle}>팁</Text>
                   <Text style={styles.tipText}>
-                    규칙 10개만 등록해도 알림 정확도가 확 올라가.
+                    규칙 10개만 등록해도 알림 정확도가 확 올라가요.
                   </Text>
                 </View>
               </View>
@@ -931,23 +901,6 @@ const styles: any = {
   },
   emptyTitle: { fontSize: 14, fontWeight: "900", color: THEME.text },
   emptyText: { marginTop: 2, fontSize: 12, color: THEME.muted, lineHeight: 16 },
-
-  scrollTopBtn: {
-    position: "absolute",
-    right: 16,
-    bottom: 50,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.brandInk,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
 
   modalOverlay: {
     flex: 1,

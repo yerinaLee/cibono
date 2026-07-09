@@ -1,7 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -13,7 +13,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollTopButton } from "@/components/ScrollTopButton";
+import { useScrollTop } from "@/hooks/use-scroll-top";
+import { THEME } from "@/src/theme";
 import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 import { getStoreLogo } from "../../src/constants/storeLogos";
@@ -37,25 +40,13 @@ type AlertEvent = {
   rule: { id: number; thresholdPrice: number } | null;
 };
 
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-  greenBg: "rgba(127,183,126,0.18)",
-  greenBd: "rgba(127,183,126,0.24)",
-};
-
 type Store = { id: number; name: string; flyerUrl: string | null };
 
 type ConfirmTarget = { type: "single"; id: number; name: string } | { type: "all" };
 
-const SCROLL_TOP_THRESHOLD = 300;
-
 export default function AlertsScreen() {
+  const insets = useSafeAreaInsets();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [items, setItems] = useState<AlertEvent[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState("");
@@ -64,8 +55,7 @@ export default function AlertsScreen() {
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const listRef = useRef<FlatList>(null);
+  const { listRef, showScrollTop, handleScroll, scrollToTop } = useScrollTop();
 
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
 
@@ -146,6 +136,9 @@ export default function AlertsScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
+      api.get<{ role: string }>("/me").then((res) => {
+        setIsAdmin(res.data.role === "ADMIN");
+      }).catch(() => {});
     }, [load]),
   );
 
@@ -162,15 +155,6 @@ export default function AlertsScreen() {
       return text.includes(q);
     });
   }, [items, search, storeNameById]);
-
-  const handleScroll = useCallback((e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    setShowScrollTop(y > SCROLL_TOP_THRESHOLD);
-  }, []);
-
-  const scrollToTop = useCallback(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  }, []);
 
   return (
     <SafeAreaView
@@ -199,16 +183,18 @@ export default function AlertsScreen() {
               color={showSearch ? THEME.brand : THEME.text}
             />
           </Pressable>
-          <Pressable
-            onPress={runScan}
-            style={({ pressed }) => [
-              styles.iconCircle,
-              pressed && { opacity: 0.85 },
-            ]}
-            accessibilityLabel="스캔 실행"
-          >
-            <MaterialIcons name="radar" size={20} color={THEME.text} />
-          </Pressable>
+          {isAdmin ? (
+            <Pressable
+              onPress={runScan}
+              style={({ pressed }) => [
+                styles.iconCircle,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityLabel="스캔 실행"
+            >
+              <MaterialIcons name="radar" size={20} color={THEME.text} />
+            </Pressable>
+          ) : null}
           <View style={{ flex: 1 }} />
           <Pressable
             onPress={requestDeleteAll}
@@ -353,18 +339,11 @@ export default function AlertsScreen() {
           }
         />
 
-        {showScrollTop ? (
-          <Pressable
-            onPress={scrollToTop}
-            style={({ pressed }) => [
-              styles.scrollTopBtn,
-              pressed && { opacity: 0.85 },
-            ]}
-            accessibilityLabel="위로 이동"
-          >
-            <MaterialIcons name="arrow-upward" size={22} color="#fff" />
-          </Pressable>
-        ) : null}
+        <ScrollTopButton
+          visible={showScrollTop}
+          onPress={scrollToTop}
+          style={{ bottom: 90 + insets.bottom }}
+        />
       </View>
 
       {/* ── 삭제 확인 모달 (냉장고 탭과 동일한 스타일) ── */}
@@ -530,23 +509,6 @@ const styles: any = {
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(31,41,55,0.05)",
-  },
-
-  scrollTopBtn: {
-    position: "absolute",
-    right: 16,
-    bottom: 50,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.brandInk,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
   },
 
   empty: {

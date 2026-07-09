@@ -1,6 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -14,7 +14,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollTopButton } from "@/components/ScrollTopButton";
+import { useScrollTop } from "@/hooks/use-scroll-top";
+import { THEME } from "@/src/theme";
 import AppHeader from "../../components/AppHeader";
 import { api, explainNetworkHint } from "../../src/api/client";
 
@@ -35,21 +38,6 @@ type Inventory = {
 type FoodCategory = {
   id: number;
   name: string;
-};
-
-const SCROLL_TOP_THRESHOLD = 300;
-
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-  warn: "#F2C94C",
-  danger: "#EB5757",
-  ok: "#27AE60",
 };
 
 type SortKey = "PURCHASED_DESC" | "EXP_ASC" | "EXP_DESC" | "QTY_DESC";
@@ -326,6 +314,7 @@ function CategorySelector({
 }
 
 export default function InventoryScreen() {
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState<Inventory[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
   const [error, setError] = useState("");
@@ -368,17 +357,7 @@ export default function InventoryScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [alertDismissed, setAlertDismissed] = useState(false);
 
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const listRef = useRef<FlatList>(null);
-
-  const handleScroll = useCallback((e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    setShowScrollTop(y > SCROLL_TOP_THRESHOLD);
-  }, []);
-
-  const scrollToTop = useCallback(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  }, []);
+  const { listRef, showScrollTop, handleScroll, scrollToTop } = useScrollTop();
 
   const [editName, setEditName] = useState("");
   const [editQty, setEditQty] = useState("1");
@@ -1028,18 +1007,11 @@ export default function InventoryScreen() {
         }
       />
 
-      {showScrollTop ? (
-        <Pressable
-          onPress={scrollToTop}
-          style={({ pressed }) => [
-            styles.scrollTopBtn,
-            pressed && { opacity: 0.85 },
-          ]}
-          accessibilityLabel="위로 이동"
-        >
-          <MaterialIcons name="arrow-upward" size={22} color="#fff" />
-        </Pressable>
-      ) : null}
+      <ScrollTopButton
+        visible={showScrollTop}
+        onPress={scrollToTop}
+        style={{ bottom: 90 + insets.bottom }}
+      />
 
       {/* ── 재료 추가 모달 ── */}
       <Modal
@@ -1855,23 +1827,6 @@ const styles: any = {
   },
   emptyTitle: { fontSize: 14, fontWeight: "900", color: THEME.text },
   emptyText: { marginTop: 2, fontSize: 12, color: THEME.muted, lineHeight: 16 },
-
-  scrollTopBtn: {
-    position: "absolute",
-    right: 16,
-    bottom: 50,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.brandInk,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
 
   modalOverlay: {
     flex: 1,

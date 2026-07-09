@@ -1,5 +1,4 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,16 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../src/api/client";
-
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  danger: "#EB5757",
-};
+import { THEME } from "@/src/theme";
+import BackHeader from "@/components/BackHeader";
 
 type NotificationConfig = {
   id: number;
@@ -77,7 +68,6 @@ const DINNER_PRESETS = [
 ];
 
 export default function AdminNotificationsScreen() {
-  const router = useRouter();
   const [configs, setConfigs] = useState<NotificationConfig[]>([]);
   const [tokens, setTokens] = useState<PushToken[]>([]);
   const [loading, setLoading] = useState(true);
@@ -270,15 +260,14 @@ export default function AdminNotificationsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       {/* 헤더 */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn}>
-          <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>알림 관리</Text>
-        <Pressable onPress={openAdd} style={styles.iconBtn}>
-          <MaterialIcons name="add" size={24} color={THEME.brand} />
-        </Pressable>
-      </View>
+      <BackHeader
+        title="알림 관리"
+        right={
+          <Pressable onPress={openAdd} style={styles.iconBtn}>
+            <MaterialIcons name="add" size={24} color={THEME.brand} />
+          </Pressable>
+        }
+      />
 
       {loading ? (
         <View style={styles.center}>

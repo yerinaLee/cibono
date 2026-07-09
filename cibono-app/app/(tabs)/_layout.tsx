@@ -4,11 +4,11 @@ import React from "react";
 import {
   Platform,
   Pressable,
-  SafeAreaView,
   Text,
   View,
   useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const THEME = {
   bg: "#FDFCF9", // app.css --bg :contentReference[oaicite:3]{index=3}
@@ -66,6 +66,7 @@ function Brand() {
  */
 function ResponsiveTabBar({ state, descriptors, navigation }: any) {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isWide = width >= 900; // 웹/데스크탑 기준
 
   const currentRoute = state.routes[state.index]?.name as RouteName;
@@ -88,7 +89,7 @@ function ResponsiveTabBar({ state, descriptors, navigation }: any) {
   if (isWide) {
     // ===== Sidebar (HTML style) ===== :contentReference[oaicite:5]{index=5}
     return (
-      <SafeAreaView style={styles.sidebarWrap}>
+      <View style={[styles.sidebarWrap, { paddingBottom: 16 + insets.bottom }]}>
         <Brand />
         <View style={styles.nav}>
           {visibleNav.map((item) => {
@@ -134,14 +135,14 @@ function ResponsiveTabBar({ state, descriptors, navigation }: any) {
             );
           })}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // ===== Bottom pill nav (HTML style) =====
   // 스샷처럼 둥근 바 + 아이콘 + 라벨 :contentReference[oaicite:6]{index=6}
   return (
-    <SafeAreaView style={styles.bottomWrap}>
+    <View style={[styles.bottomWrap, { bottom: 10 + insets.bottom }]}>
       <View style={styles.bottomBar}>
         {visibleNav.map((item) => {
           const focused = currentRoute === item.name;
@@ -181,7 +182,7 @@ function ResponsiveTabBar({ state, descriptors, navigation }: any) {
           );
         })}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -9,18 +9,9 @@ import {
   View,
 } from "react-native";
 import { api } from "../src/api/client";
+import { THEME } from "@/src/theme";
 
 type FoodCategory = { id: number; name: string };
-
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-};
 
 const DATE_PRESETS = [
   { label: "오늘", days: 0 },

@@ -31,31 +31,37 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request,
 									HttpServletResponse response,
 									FilterChain filterChain) throws ServletException, IOException {
-		String header = request.getHeader("Authorization");
-		
-		if (header != null && header.startsWith("Bearer ")) {
-			String idToken = header.substring(7);
-			try {
-				FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(idToken);
-				String firebaseUid = decoded.getUid();
-				AppUser user = findOrCreate(firebaseUid);
-				UserContext.set(user.getId(), user.getRole());
-			} catch (Exception e) {
-				log.warn("[Auth] 토큰 검증 실패: {}", e.getMessage());
-				UserContext.set(1L, "USER");
-			}
-		} else {
-			UserContext.set(1L, "ADMIN"); // 토큰 없을 때 개발용 fallback (로컬 테스트용)
-		}
-		
-		// /admin/** 경로는 ADMIN만 접근 가능
-		if (request.getRequestURI().startsWith("/admin/") && !UserContext.isAdmin()) {
-			UserContext.clear();
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "관리자 권한이 필요합니다.");
+		String uri = request.getRequestURI();
+
+		// CORS preflight(OPTIONS)와 헬스체크는 인증 없이 통과
+		if ("OPTIONS".equalsIgnoreCase(request.getMethod())
+				|| uri.equals("/actuator/health") || uri.startsWith("/actuator/health/")) {
+			filterChain.doFilter(request, response);
 			return;
 		}
-		
+
+		String header = request.getHeader("Authorization");
+		if (header == null || !header.startsWith("Bearer ")) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "인증 토큰이 필요합니다.");
+			return;
+		}
+
 		try {
+			FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(header.substring(7));
+			AppUser user = findOrCreate(decoded.getUid());
+			UserContext.set(user.getId(), user.getRole());
+		} catch (Exception e) {
+			log.warn("[Auth] 토큰 검증 실패: {}", e.getMessage());
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+			return;
+		}
+
+		try {
+			// /admin/** 경로는 ADMIN만 접근 가능
+			if (uri.startsWith("/admin/") && !UserContext.isAdmin()) {
+				response.sendError(HttpServletResponse.SC_FORBIDDEN, "관리자 권한이 필요합니다.");
+				return;
+			}
 			filterChain.doFilter(request, response);
 		} finally {
 			UserContext.clear();

@@ -115,40 +115,65 @@ public class NaverBlogService {
 		String targetUrl = url.replace("://blog.naver.com/", "://m.blog.naver.com/");
 		log.info("[OG] 요청 URL: {}", targetUrl);
 		try {
-			org.jsoup.Connection conn = Jsoup.connect(targetUrl)
-					.timeout(5000)
-					.userAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1")
-					.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-					.header("Accept-Language", "ko-KR,ko;q=0.9").followRedirects(true);
-			
-			org.jsoup.Connection.Response response = conn.execute();
-			log.info("[OG] HTTP 상태: {}, Content-Type: {}", response.statusCode(), response.contentType());
-			
-			Document doc = response.parse();
+			Document doc = fetchDoc(targetUrl);
 			log.info("[OG] 페이지 타이틀: {}", doc.title());
-			
-			Element og = doc.selectFirst("meta[property=og:image]");
-			log.info("[OG] og:image 태그: {}", og != null ? og.outerHtml() : "없음");
-			if (og != null && !og.attr("content").isBlank()) {
-				String result = toHttps(og.attr("content"));
-				log.info("[OG] 최종 이미지 URL: {}", result);
-				return result;
+
+			String image = extractImage(doc);
+			if (!image.isBlank()) {
+				log.info("[OG] 최종 이미지 URL: {}", image);
+				return image;
 			}
-			
-			Element twitter = doc.selectFirst("meta[name=twitter:image]");
-			log.info("[OG] twitter:image 태그: {}", twitter != null ? twitter.outerHtml() : "없음");
-			if (twitter != null && !twitter.attr("content").isBlank()) {
-				String result = toHttps(twitter.attr("content"));
-				log.info("[OG] 최종 이미지 URL (twitter): {}", result);
-				return result;
+
+			// 본문이 iframe(#mainFrame) 안에 있는 경우(네이버 블로그 특유 구조) → iframe 문서에서 재추출
+			Element frame = doc.selectFirst("iframe#mainFrame");
+			if (frame != null) {
+				String frameUrl = frame.absUrl("src");
+				if (!frameUrl.isBlank()) {
+					log.info("[OG] mainFrame 추적: {}", frameUrl);
+					String frameImage = extractImage(fetchDoc(frameUrl));
+					if (!frameImage.isBlank()) {
+						log.info("[OG] 최종 이미지 URL (iframe): {}", frameImage);
+						return frameImage;
+					}
+				}
 			}
-			
-			log.warn("[OG] OG 이미지 없음 — HTML head 일부: {}", doc.head().html().substring(0, Math.min(500, doc.head().html().length())));
+
+			log.warn("[OG] OG 이미지 없음: {}", targetUrl);
 			return "";
 		} catch (Exception e) {
 			log.warn("[OG] 이미지 추출 실패 {}: {} - {}", targetUrl, e.getClass().getSimpleName(), e.getMessage());
 			return "";
 		}
+	}
+
+	private Document fetchDoc(String targetUrl) throws java.io.IOException {
+		return Jsoup.connect(targetUrl)
+				.timeout(5000)
+				.userAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1")
+				.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+				.header("Accept-Language", "ko-KR,ko;q=0.9")
+				.followRedirects(true)
+				.get();
+	}
+
+	// og:image → og:image:url → twitter:image → link[rel=image_src] 순으로 이미지 추출
+	private String extractImage(Document doc) {
+		String[] selectors = {
+				"meta[property=og:image]",
+				"meta[property=og:image:url]",
+				"meta[name=twitter:image]",
+				"link[rel=image_src]"
+		};
+		for (String selector : selectors) {
+			Element el = doc.selectFirst(selector);
+			if (el != null) {
+				String content = el.hasAttr("content") ? el.attr("content") : el.attr("href");
+				if (content != null && !content.isBlank()) {
+					return toHttps(content);
+				}
+			}
+		}
+		return "";
 	}
 	
 	private String toHttps(String url) {

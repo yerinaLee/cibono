@@ -1,5 +1,5 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import BackHeader from "@/components/BackHeader";
+import { THEME } from "@/src/theme";
 import { api, proxyImageUrl } from "../src/api/client";
 
 type RecipeDetail = {
@@ -31,17 +33,6 @@ type BlogItem = {
   imageUrl: string;
 };
 
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-  danger: "#EB5757",
-};
-
 function formatDate(d: string) {
   if (d.length === 8) return `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}`;
   return d;
@@ -49,7 +40,6 @@ function formatDate(d: string) {
 
 export default function RecipeDetailScreen() {
   const { name } = useLocalSearchParams<{ name: string }>();
-  const router = useRouter();
 
   const [detail, setDetail] = useState<RecipeDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -165,7 +155,6 @@ export default function RecipeDetailScreen() {
       .get<BlogItem[]>("/recipes/naver-blog", { params: { query: name } })
       .then((res) => {
         const data = res.data ?? [];
-        console.log("[Blog] 받은 목록:", data.map((b) => ({ title: b.title, imageUrl: b.imageUrl })));
         setBlogs(data);
       })
       .catch(() => {})
@@ -175,26 +164,22 @@ export default function RecipeDetailScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       {/* 헤더 */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.7 }]}
-        >
-          <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
-        </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{name ?? "레시피"}</Text>
-        <Pressable
-          onPress={toggleSave}
-          disabled={savingRecipe}
-          style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.7 }]}
-        >
-          <MaterialIcons
-            name={saved ? "bookmark" : "bookmark-border"}
-            size={22}
-            color={saved ? THEME.brand : THEME.text}
-          />
-        </Pressable>
-      </View>
+      <BackHeader
+        title={name ?? "레시피"}
+        right={
+          <Pressable
+            onPress={toggleSave}
+            disabled={savingRecipe}
+            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.7 }]}
+          >
+            <MaterialIcons
+              name={saved ? "bookmark" : "bookmark-border"}
+              size={22}
+              color={saved ? THEME.brand : THEME.text}
+            />
+          </Pressable>
+        }
+      />
 
       {loading && (
         <View style={styles.center}>
@@ -356,26 +341,11 @@ export default function RecipeDetailScreen() {
 }
 
 const styles: any = {
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: THEME.bg,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
-  },
   iconBtn: {
     width: 36, height: 36, borderRadius: 18,
     alignItems: "center", justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.85)",
     borderWidth: 1, borderColor: THEME.border,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 16, fontWeight: "900", color: THEME.text,
-    marginHorizontal: 8,
   },
 
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 14 },

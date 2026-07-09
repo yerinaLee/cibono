@@ -14,6 +14,10 @@ import {
 import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api, proxyImageUrl } from "../src/api/client";
+import { THEME } from "@/src/theme";
+import { useScrollTop } from "@/hooks/use-scroll-top";
+import { ScrollTopButton } from "@/components/ScrollTopButton";
+import BackHeader from "@/components/BackHeader";
 
 type SavedRecipe = {
   id: number;
@@ -25,36 +29,13 @@ type SavedRecipe = {
   createdAt: string;
 };
 
-const THEME = {
-  bg: "#F3F8F1",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "rgba(31,41,55,0.10)",
-  brand: "#7FB77E",
-  brandInk: "#0F1F16",
-  danger: "#EB5757",
-};
-
-const SCROLL_TOP_THRESHOLD = 300;
-
 export default function SavedRecipesScreen() {
   const router = useRouter();
   const [items, setItems] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const openSwipeRef = useRef<Swipeable | null>(null);
-  const listRef = useRef<FlatList>(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
-  const handleScroll = useCallback((e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    setShowScrollTop(y > SCROLL_TOP_THRESHOLD);
-  }, []);
-
-  const scrollToTop = useCallback(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  }, []);
+  const { listRef, showScrollTop, handleScroll, scrollToTop } = useScrollTop();
 
   const load = useCallback(async (query?: string) => {
     setLoading(true);
@@ -102,16 +83,7 @@ export default function SavedRecipesScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       {/* 헤더 */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.7 }]}
-        >
-          <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>저장된 레시피</Text>
-        <View style={{ width: 36 }} />
-      </View>
+      <BackHeader title="저장된 레시피" />
 
       {/* 검색 */}
       <View style={styles.searchBox}>
@@ -213,35 +185,12 @@ export default function SavedRecipesScreen() {
         />
       )}
 
-      {showScrollTop ? (
-        <Pressable
-          onPress={scrollToTop}
-          style={({ pressed }) => [
-            styles.scrollTopBtn,
-            pressed && { opacity: 0.85 },
-          ]}
-          accessibilityLabel="위로 이동"
-        >
-          <MaterialIcons name="arrow-upward" size={22} color="#fff" />
-        </Pressable>
-      ) : null}
+      <ScrollTopButton visible={showScrollTop} onPress={scrollToTop} />
     </SafeAreaView>
   );
 }
 
 const styles: any = {
-  header: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: THEME.border, backgroundColor: THEME.bg,
-  },
-  iconBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.85)", borderWidth: 1, borderColor: THEME.border,
-  },
-  headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: THEME.text },
-
   searchBox: {
     flexDirection: "row", alignItems: "center",
     marginHorizontal: 14, marginTop: 12, marginBottom: 4,
@@ -292,23 +241,6 @@ const styles: any = {
     gap: 4,
   },
   swipeDeleteText: { fontSize: 12, fontWeight: "900", color: "#FFFFFF" },
-
-  scrollTopBtn: {
-    position: "absolute",
-    right: 16,
-    bottom: 50,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.brandInk,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
 
   empty: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: "900", color: THEME.text },
