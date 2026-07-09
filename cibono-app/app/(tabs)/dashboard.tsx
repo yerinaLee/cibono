@@ -52,6 +52,9 @@ type Suggestion = {
   score: number;
 };
 
+// 추천 카드용 음식 이모지 (이미지 대체 — 인덱스로 순환)
+const RECO_EMOJIS = ["🍲", "🍳", "🥘", "🍜", "🥗", "🍝"];
+
 const STORAGE_LABEL: Record<string, string> = {
   FRIDGE: "냉장",
   FREEZER: "냉동",
@@ -618,9 +621,40 @@ export default function DashboardScreen() {
                     </View>
                   )}
                   */}
+                  <View style={styles.recoTop}>
+                    <View style={styles.recoEmojiWrap}>
+                      <Text style={styles.recoEmoji}>
+                        {RECO_EMOJIS[i % RECO_EMOJIS.length]}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.recoStatus,
+                        item.missingCount === 0
+                          ? styles.recoStatusReady
+                          : styles.recoStatusMissing,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.recoStatusText,
+                          { color: item.missingCount === 0 ? THEME.ok : "#B7791F" },
+                        ]}
+                      >
+                        {item.missingCount === 0
+                          ? "바로 가능"
+                          : `재료 ${item.missingCount}개`}
+                      </Text>
+                    </View>
+                  </View>
                   <Text style={styles.recoName} numberOfLines={2}>
                     {item.name}
                   </Text>
+                  {item.ingredients.length > 0 && (
+                    <Text style={styles.recoMeta} numberOfLines={1}>
+                      {item.ingredients.slice(0, 3).join(" · ")}
+                    </Text>
+                  )}
                 </Pressable>
               ))}
             </View>
@@ -822,16 +856,54 @@ const styles: any = {
   recoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   recoCard: {
     width: "47%",
-    borderRadius: 12,
-    overflow: "hidden",
+    minHeight: 104,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: THEME.border,
     backgroundColor: "#FFFFFF",
+    padding: 12,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
+  recoTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  recoEmojiWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(127,183,126,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(127,183,126,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recoEmoji: { fontSize: 18 },
+  recoStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  recoStatusReady: {
+    backgroundColor: "rgba(39,174,96,0.12)",
+    borderColor: "rgba(39,174,96,0.25)",
+  },
+  recoStatusMissing: {
+    backgroundColor: "rgba(242,201,76,0.14)",
+    borderColor: "rgba(242,201,76,0.30)",
+  },
+  recoStatusText: { fontSize: 10, fontWeight: "900" },
   recoThumb: {
     width: "100%",
     height: 90,
@@ -842,11 +914,15 @@ const styles: any = {
     justifyContent: "center",
   },
   recoName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "800",
     color: THEME.text,
-    padding: 8,
-    lineHeight: 16,
+    lineHeight: 18,
+  },
+  recoMeta: {
+    fontSize: 11,
+    color: THEME.muted,
+    lineHeight: 15,
   },
 
   bottomLink: {
