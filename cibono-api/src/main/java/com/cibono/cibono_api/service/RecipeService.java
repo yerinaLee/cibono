@@ -73,7 +73,9 @@ public class RecipeService {
 				.limit(50)
 				.toList();
 
-		return top.stream().map(this::withNaverBlogImage).toList();
+		// 네이버 블로그 이미지 호출 임시 비활성화 (프론트 이미지 숨김 + 추천 응답 속도/타임아웃 방지)
+		// return top.stream().map(this::withNaverBlogImage).toList();
+		return top;
 	}
 
 	// 추천 카드 이미지: 레시피명으로 네이버 블로그 검색해서 첫 번째 결과의 이미지를 사용
