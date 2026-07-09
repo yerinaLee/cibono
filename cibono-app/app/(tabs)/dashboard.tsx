@@ -603,6 +603,7 @@ export default function DashboardScreen() {
                     pressed && { opacity: 0.85 },
                   ]}
                 >
+                  {/* 이미지 임시 숨김 (블로그 이미지 이슈 해결 전까지 주석 처리)
                   {item.imageUrl ? (
                     <Image
                       source={{ uri: proxyImageUrl(item.imageUrl) ?? item.imageUrl }}
@@ -616,6 +617,7 @@ export default function DashboardScreen() {
                       <Text style={{ fontSize: 22 }}>🍽️</Text>
                     </View>
                   )}
+                  */}
                   <Text style={styles.recoName} numberOfLines={2}>
                     {item.name}
                   </Text>
