@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -270,6 +271,15 @@ export default function RecommendScreen() {
       (a, b) => Number(b.hasUrgent) - Number(a.hasUrgent) || b.score - a.score,
     );
   }, [computed, cuisineFilter, q, timePreset]);
+
+  const openBlogLink = useCallback(async (url: string) => {
+    if (!url) return;
+    try {
+      await Linking.openURL(url);
+    } catch {
+      // 링크를 열 수 없는 경우 무시
+    }
+  }, []);
 
   const toggleSearchBlogSave = useCallback(
     async (blog: BlogSearchResult) => {
@@ -622,7 +632,14 @@ export default function RecommendScreen() {
                     <Text style={styles.meta}>&ldquo;{q}&rdquo; 검색 결과</Text>
                   </View>
                   {blogResults.map((blog, i) => (
-                    <View key={i} style={styles.blogRow}>
+                    <Pressable
+                      key={i}
+                      onPress={() => openBlogLink(blog.link)}
+                      style={({ pressed }) => [
+                        styles.blogRow,
+                        pressed && { opacity: 0.9 },
+                      ]}
+                    >
                       {blog.imageUrl ? (
                         <Image
                           source={{ uri: proxyImageUrl(blog.imageUrl)! }}
@@ -673,7 +690,7 @@ export default function RecommendScreen() {
                           }
                         />
                       </Pressable>
-                    </View>
+                    </Pressable>
                   ))}
                 </>
               )}
