@@ -33,9 +33,11 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 									FilterChain filterChain) throws ServletException, IOException {
 		String uri = request.getRequestURI();
 
-		// CORS preflight(OPTIONS)와 헬스체크는 인증 없이 통과
+		// CORS preflight(OPTIONS), 헬스체크, 이미지 프록시는 인증 없이 통과.
+		// (이미지 프록시는 RN <Image>가 토큰 헤더 없이 호출하므로 공개 처리)
 		if ("OPTIONS".equalsIgnoreCase(request.getMethod())
-				|| uri.equals("/actuator/health") || uri.startsWith("/actuator/health/")) {
+				|| uri.equals("/actuator/health") || uri.startsWith("/actuator/health/")
+				|| uri.equals("/proxy-image")) {
 			filterChain.doFilter(request, response);
 			return;
 		}
